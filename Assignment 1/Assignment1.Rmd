@@ -1,0 +1,383 @@
+---
+title: "Assignment 1"
+author: "Lorenzo Ausiello"
+date: "2023-09-26"
+output:
+  pdf_document:
+    df_print: kable
+    fig_caption: yes
+    highlight: tango
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(echo = FALSE, out.width="50%",out.height="50%")
+```
+
+
+**PROBLEM 1**
+
+*Introduction*
+The purpose of this report is to analyze information about real estate sales data in the different boroughs of New York City, taking into account sales from 2012 to 2013. The analysis aims to identify any dependencies or trends in the data and draw conclusions based on the results.
+
+*Data Description*
+The datasets include columns such as borough, neighborhood, building class category, tax class at present, block, lot, residential units, 
+commercial units, total units, land square feet, gross square feet, year built, tax class at time of sale, 
+building class at time of sale, sale price, and sale date.
+
+
+*Data Cleaning*
+Once found out outliers, missing values, and values equal to 0, it has been decided beforehand to remove records with no price information. Then, records with outliers ( log(square feet)<=4 or log(sale.price)<=6 ) have been removed, since they affect the accuracy of the analysis. Below table and scatter plot. Column names have been converted to lowercase. Moreover, the dates have been formatted correctly, and it has been giving to the variable useful format. 
+The 5 different datasets, relating to the 5 New York City boroughs, have been merged to simplify analysis, without loss of information. 
+
+*Data Analysis*
+Below is the statistics table of the sale prices before and after removing missing value and zero values, and then the statistics table after removing outliers.
+Below is also scatter plot between log(square feet) and log(sale price) before and after.
+
+```{r moto1, echo=FALSE}
+setwd("C:/Users/loaus/OneDrive - stevens.edu/STEVENS/Foundations of Financial Data Science/Assignment/HW1_F23")
+library(openxlsx)
+brooklyn<-read.xlsx("rollingsales_brooklyn.xlsx", 1,startRow=5)
+bronx<-read.xlsx("rollingsales_bronx.xlsx", 1,startRow=5)
+manhattan<-read.xlsx("rollingsales_manhattan.xlsx", 1,startRow=5)
+statenisland<-read.xlsx("rollingsales_statenisland.xlsx", 1,startRow=5)
+queens<-read.xlsx("rollingsales_queens.xlsx", 1,startRow=5)
+
+newyork<-rbind(brooklyn,bronx,manhattan,statenisland,queens)
+
+moto1<-matrix(c(min(newyork$SALE.PRICE),max(newyork$SALE.PRICE),mean(newyork$SALE.PRICE)))
+rownames(moto1)<-c("Min","Max","Mean")
+
+
+
+## missing values
+
+
+names(newyork) <- tolower(names(newyork))
+
+
+
+## clean/format the data with regular expressions
+newyork$sale.date <- convertToDateTime(as.numeric(newyork$sale.date))
+newyork$sale.datewindow <-cut(newyork$sale.date, breaks = "quarter")
+newyork$borough<-as.factor(newyork$borough)
+newyork$building.class.category<-as.factor(newyork$building.class.category)
+
+
+## keep only the actual sales
+plot(log(newyork$gross.square.feet),log(newyork$sale.price),main="Scatter Plot w/ missing values")
+knitr::kable(moto1,caption="Sale Prices Statistics w/ missing values")
+
+newyork.sale <- newyork[newyork$sale.price!=0,]
+moto2<-matrix(c(min(newyork.sale$sale.price),max(newyork.sale$sale.price),mean(newyork.sale$sale.price)))
+rownames(moto2)<-c("Min","Max","Mean")
+plot(log(newyork.sale$gross.square.feet),log(newyork.sale$sale.price),main="Scatter Plot without missing values (Actual Sales)")
+knitr::kable(moto2,caption="Sale Prices Statistics without missing values (Actual Sales)")
+
+newyork.sale$outliers <- (log(newyork.sale$sale.price) <= 6) + 0
+newyork.sale$outliers2 <- (log(newyork.sale$gross.square.feet) <= 4) + 0
+
+newyork.sale <- newyork.sale[which(newyork.sale$outliers==0 & newyork.sale$outliers2==0),]
+moto3<-matrix(c(min(newyork.sale$sale.price),max(newyork.sale$sale.price),mean(newyork.sale$sale.price)))
+rownames(moto3)<-c("Min","Max","Mean")
+plot(log(newyork.sale$gross.square.feet),log(newyork.sale$sale.price),main="Scatter Plot w/out Outliers")
+knitr::kable(moto3,caption="Sale Prices Statistics w/out Outliers")
+
+```
+
+
+The scatter plots seem to show a positive relationship between price and square feet, which means that as 
+the gross square feet increase, the sale price also tends to increase. Positive relationship is more apparent after removing outliers. The x-axis represents the log of the gross square feet, and the y-axis represents the log of the sale price. The log transformation is 
+useful when the data has a wide range of values, as it can help to reduce the effect of outliers and make 
+the relationship between the variables more apparent. Further analysis are needed.
+
+
+
+Now let's look only at 1, 2, 3 family homes,coops, and condos.
+A new variable (sale.datewindow) has been created to categorize records in 5 different quarters based on sale date. Below statistics and graphs.
+
+
+```{r moto2, echo=FALSE}
+newyork.homes<-newyork.sale[which(grepl("FAMILY",newyork.sale$building.class.category)),]
+newyork.homes<-rbind(newyork.homes, newyork.sale[which(grepl("COND",newyork.sale$building.class.category)),])
+newyork.homes<-rbind(newyork.homes, newyork.sale[which(grepl("COOPS",newyork.sale$building.class.category)),])
+
+#exploratory data analysis: statistics and visual graphs
+library(doBy)
+library(ggplot2)
+
+quant_analysis<-function(x){
+  c(length(x),min(x),max(x),mean(x))
+}
+
+ggplot(newyork.homes,aes(x=building.class.category, y=log(sale.price), fill=building.class.category))+geom_boxplot()+labs(title = "Boxplot of Price",subtitle="segment: Building Category")
+ggplot(newyork.homes,aes(x=borough, y=log(sale.price), fill=borough))+geom_boxplot()+labs(title = "Boxplot of Price",subtitle="segment: Borough")
+ggplot(newyork.homes,aes(x=sale.datewindow, y=log(sale.price), fill=sale.datewindow))+geom_boxplot()+labs(title = "Boxplot of Price",subtitle="segment: Sale Date Window")
+
+
+auto1<-summaryBy(sale.price~building.class.category, data=newyork.homes, FUN=quant_analysis)
+colnames(auto1)<-c("Building Category","Length","Min","Max","Mean")
+knitr::kable(auto1,caption="Statistics of Sale Price - segment: Building Category")
+
+auto2<-summaryBy(sale.price~borough, data=newyork.homes, FUN=quant_analysis)
+colnames(auto2)<-c("Borough","Length","Min","Max","Mean")
+knitr::kable(auto2,caption="Statistics of Sale Price - segment: Borough")
+
+auto3<-summaryBy(sale.price~sale.datewindow, data=newyork.homes, FUN=quant_analysis)
+colnames(auto3)<-c("Sale Date Window","Length","Min","Max","Mean")
+knitr::kable(auto3,caption="Statistics of Sale Price - segment: Sale Date Window")
+
+```
+
+Visualizations were created to explore the relationship between the sale price and other variables, such 
+as borough, neighborhood, and building class category.
+Looking at boxplots and statistics, CONDOPS is by far the most expensive Building Category, and SPECIAL CONDO BILLING LOTS is the cheapest.
+As for boroughs, Manhattan is the most expensive real estate area, and it has a mean price that is 20 times higher than the cheapest borough mean price, i.e. Bronx. 
+Furthermore, New York City Real Estate mean prices hit a low during the first quarter of the period considered, and they reached their peak immediately afterwards, during the second quarter.
+
+
+Finally, linear regressions have been calculated, analyzing the relationship between log(sale prices) (response variable) and log(square feet) (explanatory variables). It has been made for New York City and for each boroughs.
+Below the results.
+```{r moto3, echo=FALSE}
+
+## models
+manhattan<-newyork.homes[newyork.homes$borough==1,]
+brooklyn<-newyork.homes[newyork.homes$borough==3,]
+bronx<-newyork.homes[newyork.homes$borough==2,]
+queens<-newyork.homes[newyork.homes$borough==4,]
+statenisland<-newyork.homes[newyork.homes$borough==5,]
+
+
+model1=lm(log(newyork.homes$sale.price)~log(newyork.homes$gross.square.feet))
+summary(model1)
+plot(log(newyork.homes$gross.square.feet), log(newyork.homes$sale.price),main="New York: Linear Model SQFT vs Price")
+abline(model1, col='red', lwd=2)
+
+model2=lm(log(bronx$sale.price)~log(bronx$gross.square.feet))
+summary(model2)
+plot(log(bronx$gross.square.feet), log(bronx$sale.price),main="Bronx: Linear Model SQFT vs Price")
+abline(model2, col='red', lwd=2)
+
+model3=lm(log(manhattan$sale.price)~log(manhattan$gross.square.feet))
+summary(model3)
+plot(log(manhattan$gross.square.feet), log(manhattan$sale.price),main="Manhattan: Linear Model SQFT vs Price")
+abline(model3, col='red', lwd=2)
+
+model4=lm(log(brooklyn$sale.price)~log(brooklyn$gross.square.feet))
+summary(model4)
+plot(log(brooklyn$gross.square.feet), log(brooklyn$sale.price),main="Brooklyn: Linear Model SQFT vs Price")
+abline(model4, col='red', lwd=2)
+
+model5=lm(log(queens$sale.price)~log(queens$gross.square.feet))
+summary(model5)
+plot(log(queens$gross.square.feet), log(queens$sale.price),main="Queens: Linear Model SQFT vs Price")
+abline(model5, col='red', lwd=2)
+
+model6=lm(log(statenisland$sale.price)~log(statenisland$gross.square.feet))
+summary(model6)
+plot(log(statenisland$gross.square.feet), log(statenisland$sale.price),main="Staten Island: Linear Model SQFT vs Price")
+abline(model6, col='red', lwd=2)
+
+```
+
+The models reveal a positive relationship between sale prices and square feet in each borough.
+The p-value associated to the parameters (intercept and slope) are all very close to zero, indicating that the overall model is highly statistically significant.
+However, the R-squared values are very low. R-Squared, also known as the coefficient of determination, represents the proportion of the variance in the dependent variable (in this case, the logarithm of sale prices) that is explained by the independent variable (in this case, the logarithm of gross square feet). In other words, it measures how well the independent variable can predict or account for the variation in the dependent variable.
+This suggests that, in each borough, the linear relationship between these two variables, as captured by the model, explains only a small proportion of the total variability in sale prices. This suggests that other factors not included in the model may also influence sale prices. 
+
+
+
+**PROBLEM 2**
+
+*Introduction*
+The datasets provided nyt1.csv, nyt2.csv and nyt3.csv represent three days of ads shown and clicks recorded on the New York Times homepage. Each row represents a single user. There are 5 columns: age, gender (0=female, 1=male), number impressions, number clicks, and logged-in. We will explore various aspects of the data and perform data analysis.
+
+*Data Preparation*
+Once read and cleaned the data, giving them useful format, a new variable was created: "age_group". This new variable categorizes users as "\<20", "20-29", "30-39", "40-49", "50-59", "60-69", and "70+". The 3 different datasets, relating to the 3 different days, have been merged to simplify starting analysis, without loss of information. 
+
+```{r cars1, echo=FALSE}
+##PROBLEM 2
+setwd("C:/Users/loaus/OneDrive - stevens.edu/STEVENS/Foundations of Financial Data Science/Assignment/HW1_F23")
+
+## Import Data
+data1<-read.csv("nyt1.csv")
+data2<-read.csv("nyt2.csv")
+data3<-read.csv("nyt3.csv")
+
+## clean/format the data with regular expressions
+data1$Gender<-as.factor(data1$Gender)
+data2$Gender<-as.factor(data2$Gender)
+data3$Gender<-as.factor(data3$Gender)
+
+data1$Signed_In<-as.factor(data1$Signed_In)
+data2$Signed_In<-as.factor(data2$Signed_In)
+data3$Signed_In<-as.factor(data3$Signed_In)
+data1$age_group<-cut(data1$Age, c(-Inf,19,29,39,49,59,69,Inf))
+
+
+data2$age_group<-cut(data2$Age, c(-Inf,19,29,39,49,59,69,Inf))
+
+
+data3$age_group<-cut(data3$Age, c(-Inf,19,29,39,49,59,69,Inf))
+
+data1$weekday<-1
+data2$weekday<-2
+data3$weekday<-3
+data_tot<-rbind(data1,data2,data3)
+data_tot$weekday<-as.factor(data_tot$weekday)
+data_tot$Gender<-as.factor(data_tot$Gender)
+data_tot$Signed_In<-as.factor(data_tot$Signed_In)
+data_tot$Age<-as.numeric(data_tot$Age)
+data_tot$Impressions<-as.numeric(data_tot$Impressions)
+
+table7<-summary(data_tot)
+knitr::kable(table7,caption="Summary All Days")
+```
+
+The dataset primarily consists of users with a median age of 31, skewed slightly towards younger 
+individuals, and a majority of users are signed in (70.06%). Ad impressions vary from 0 to 20, with a 
+median of 5, while ad clicks are generally low, with a median of 0. Moreover, we are able to notice how
+the most frequent age group is those under 19s.
+
+
+Then, the distribution of number of impressions and click-through-rate (CTR = clicks / impressions) for these age categories was plotted, generating the following results:
+
+```{r pressures1, echo=FALSE}
+library(ggplot2)
+ggplot(data1,aes(x=Impressions, colour=age_group))+geom_density()+labs(title = "Distribution of number of impressions",subtitle="Day 1")
+ggplot(data2,aes(x=Impressions, colour=age_group))+geom_density()+labs(title="Distribution of number of impressions",subtitle= "Day 2")
+ggplot(data3,aes(x=Impressions, colour=age_group))+geom_density()+labs(title="Distribution of number of impressions",subtitle= "Day 3")
+
+
+ggplot(subset(data1, Clicks>0),aes(x=Clicks/Impressions, colour=age_group))+geom_density()+labs(title="Distribution of CTR",subtitle= "Day 1")
+ggplot(subset(data2, Clicks>0),aes(x=Clicks/Impressions, colour=age_group))+geom_density()+labs(title="Distribution of CTR",subtitle="Day 2")
+ggplot(subset(data3, Clicks>0),aes(x=Clicks/Impressions, colour=age_group))+geom_density()+labs(title="Distribution of CTR",subtitle="Day 3")
+```
+As shown in the graphs, observations are more frequent for number of Impressions equal to 4 and 5, on all three days and for all age group. The greater the distance from these values, the lower the frequency. As for the distribution of click-through-rate, also in this case are shown similar density frequency function for each day and age group. Particularly, most observations are concentrated between CTR values lower than or equal 0.25, and a few observations corresponding to 0.3 and 0.5. 
+
+After that, a new variable was created to segment users based on their click
+behavior: users with Impressions=0 were included in the "NoImps" segment, users with Impressions>0 but Clicks=0 included in the "Imps" segment, the remaining in "Clicks" category.
+Subsequently, quantitative and visual comparisons across user segments/demographics were executed.
+
+```{r cars2, echo=FALSE}
+data1$clicks_cat<-NA
+data1$clicks_cat[data1$Impressions==0]<-"NoImps"
+data1$clicks_cat[data1$Impressions>0]<-"Imps"
+data1$clicks_cat[data1$Clicks>0]<-"Clicks"
+
+data2$clicks_cat<-NA
+data2$clicks_cat[data2$Impressions==0]<-"NoImps"
+data2$clicks_cat[data2$Impressions>0]<-"Imps"
+data2$clicks_cat[data2$Clicks>0]<-"Clicks"
+
+data3$clicks_cat<-NA
+data3$clicks_cat[data3$Impressions==0]<-"NoImps"
+data3$clicks_cat[data3$Impressions>0]<-"Imps"
+data3$clicks_cat[data3$Clicks>0]<-"Clicks"
+
+data1$clicks_cat<- as.factor(data1$clicks_cat)
+data2$clicks_cat<- as.factor(data2$clicks_cat)
+data3$clicks_cat<- as.factor(data3$clicks_cat)
+
+library(doBy)
+quant_analysis<-function(x){
+  c(min(x),max(x),mean(x))
+}
+```
+
+```{r vabene1, echo=FALSE}
+table1<-summaryBy(Impressions~Gender+age_group, data=data1, FUN=quant_analysis)
+colnames(table1)<-c("Gender","Age_Group","Min","Max","Mean")
+table2<-summaryBy(Impressions~Gender+age_group, data=data2, FUN=quant_analysis)
+colnames(table2)<-c("Gender","Age_Group","Min","Max","Mean")
+table3<-summaryBy(Impressions~Gender+age_group, data=data3, FUN=quant_analysis)
+colnames(table3)<-c("Gender","Age_Group","Min","Max","Mean")
+
+knitr::kable(table1,caption="Statistics of Impressions Day 1 - segment: Age Group and Gender")
+knitr::kable(table2,caption="Statistics of Impressions Day 2 - segment: Age Group and Gender ")
+knitr::kable(table3,caption="Statistics of Impressions Day 3 - segment: Age Group and Gender ")
+
+table4<-summaryBy(Impressions~clicks_cat+Signed_In, data=data1, FUN=quant_analysis)
+colnames(table4)<-c("Clicks_Cat","Signed_In","Min","Max","Mean")
+table5<-summaryBy(Impressions~clicks_cat+Signed_In, data=data2, FUN=quant_analysis)
+colnames(table5)<-c("Clicks_Cat","Signed_In","Min","Max","Mean")
+table6<-summaryBy(Impressions~clicks_cat+Signed_In, data=data3, FUN=quant_analysis)
+colnames(table6)<-c("Clicks_Cat","Signed_In","Min","Max","Mean")
+
+knitr::kable(table4,caption="Statistics of Impressions Day 1 - segment: Clicks Cat and Signed In ")
+knitr::kable(table5,caption="Statistics of Impressions Day 2 - segment: Clicks Cat and Signed In ")
+knitr::kable(table6,caption="Statistics of Impressions Day 3 - segment: Clicks Cat and Signed In ")
+```
+
+
+```{r pressures2, echo=FALSE}
+ggplot(data1,aes(x=age_group, y=Impressions, fill=Gender))+geom_boxplot()+labs(title = "Boxplot of impressions",subtitle="Day 1 - segment: Age Group and Gender")
+ggplot(data1,aes(x=clicks_cat, y=Impressions, fill=Signed_In))+geom_boxplot()+labs(title = "Boxplot of impressions",subtitle="Day 1 - segment: Clicks Cat and Signed In")
+
+ggplot(data2,aes(x=age_group, y=Impressions, fill=Gender))+geom_boxplot()+labs(title = "Boxplot of impressions",subtitle="Day 2 - segment: Age Group and Gender")
+ggplot(data2,aes(x=clicks_cat, y=Impressions, fill=Signed_In))+geom_boxplot()+labs(title = "Boxplot of impressions",subtitle="Day 2 - segment: Clicks Cat and Signed In")
+
+ggplot(data3,aes(x=age_group, y=Impressions, fill=Gender))+geom_boxplot()+labs(title = "Boxplot of impressions",subtitle="Day 3 - segment: Age Group and Gender")
+ggplot(data3,aes(x=clicks_cat, y=Impressions, fill=Signed_In))+geom_boxplot()+labs(title = "Boxplot of impressions",subtitle="Day 3 - segment: Clicks Cat and Signed In")
+```
+The impressions mean is roughly the same both for the two genders and for the different age groups. It is around a value of 5. Max values among different segments are roughly the same as well: the highest difference (4 impressions) is between 29-39 (18/19 impressions) and over 59 (14/15 impressions). It is interesting to notice that users included in "Clicks" category present a mean value of Impressions higher than users included in "Imps" category. Therefore, users with at least 1 Click are those users who interacted more and so with higher values of Impressions.
+
+
+
+
+Finally, analysis was extended to make further comparisons across days. Below some metrics and distributions over time.
+
+```{r vabene2, echo=FALSE}
+knitr::kable(summary(data1),caption="Summary Day 1")
+knitr::kable(summary(data2),caption="Summary Day 2")
+knitr::kable(summary(data3),caption="Summary Day 3")
+
+data1$weekday<-1
+data2$weekday<-2
+data3$weekday<-3
+data_tot<-rbind(data1,data2,data3)
+data_tot$weekday<-as.factor(data_tot$weekday)
+data_tot$Gender<-as.factor(data_tot$Gender)
+data_tot$clicks_cat<-as.factor(data_tot$clicks_cat)
+data_tot$Signed_In<-as.factor(data_tot$Signed_In)
+data_tot$Age<-as.numeric(data_tot$Age)
+data_tot$Impressions<-as.numeric(data_tot$Impressions)
+
+
+quant_analysis2<-function(x){
+  c(min(x),max(x),mean(x))
+}
+```
+
+```{r table3, echo=FALSE}
+library(doBy)
+
+table8<-summaryBy(Impressions~weekday+Signed_In, data=data_tot, FUN=quant_analysis2)
+colnames(table8)<-c("Weekday","Signed In","Min","Max","Mean")
+
+table9<-summaryBy(Impressions~weekday+clicks_cat, data=data_tot, FUN=quant_analysis2)
+colnames(table9)<-c("Weekday","Clicks Cat","Min","Max","Mean")
+
+table10<-summaryBy(Impressions~weekday+Gender, data=data_tot, FUN=quant_analysis2)
+colnames(table10)<-c("Weekday","Gender","Min","Max","Mean")
+
+table11<-summaryBy(Age~weekday, data=data_tot,FUN=quant_analysis2)
+colnames(table11)<-c("Weekday","Min","Max","Mean")
+
+knitr::kable(table8,caption="Statistics of Impressions - segment: Weekday and Signed In ")
+knitr::kable(table9,caption="Statistics of Impressions - segment: Weekday and Clicks Cat ")
+knitr::kable(table10,caption="Statistics of Impressions - segment: Weekday and Gender")
+knitr::kable(table11,caption="Statistics of Age based on weekday ")
+```
+
+```{r pressures3, echo=FALSE}
+ggplot(data_tot,aes(x=clicks_cat,y=Impressions, fill=weekday))+geom_boxplot()+labs(title="Boxplot of Impressions",subtitle= "segment: Clicks Cat and Weekday")
+ggplot(data_tot,aes(x=Signed_In,y=Impressions, fill=weekday))+geom_boxplot()+labs(title="Boxplot of Impressions",subtitle= "segment:  Signed In and Weekday")
+ggplot(data_tot,aes(x=Gender,y=Impressions, fill=weekday))+geom_boxplot()+labs(title="Boxplot of Impressions",subtitle= "segment: Gender and Weekday")
+ggplot(data_tot,aes(x=weekday,y=Age, fill=weekday))+geom_boxplot()+labs(title="Boxplot of Age",subtitle= "segment: Weekday")
+ggplot(subset(data_tot, Clicks>0),aes(x=Clicks/Impressions, colour=weekday))+geom_density()+labs(title="Distribution of CTR",subtitle= "segment: Weekday")
+```
+
+During the all three days, the impressions means remain constant for the two genders, for the different age groups, for the different clicks categories and also for the different signed in categories. Moreover, also the distribution of CTR remains unchanged during the days.
