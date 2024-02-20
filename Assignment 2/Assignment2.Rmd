@@ -1,0 +1,802 @@
+---
+title: "Assignment2"
+author: "Lorenzo Ausiello"
+date: "2023-10-17"
+output:
+  pdf_document:
+    df_print: kable
+    fig_caption: yes
+    highlight: tango
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(echo = FALSE, out.width="80%",out.height="80%", warning = F)
+```
+
+**PROBLEM 1**
+
+*Introduction*
+The purpose of this report is to analyze information about S&P 500 component stocks. The analysis aims to identify most relevant sectors, most frequent headquarter locations and years in which more stocks (still included) have been added.
+
+*Data Description*
+The dataset includes columns such as Symbol, Security, GISC Sector, GICS Sub-Industry, Headquarters Location, Date added, CIK, Founded. It has been retrieved scraping Wikipedia website relative to the List of S&P 500 Companies. 
+
+```{r cars}
+##Retrieving the content of the S&P 500 component stocks table from wikipedia
+library(XML)
+library(httr)
+
+ubase = "https://en.wikipedia.org/"
+url = paste(ubase, "wiki/List_of_S%26P_500_companies", sep = "")
+h <- handle(url)
+res <- GET(handle = h)
+doc = htmlParse(res)
+
+preNode = getNodeSet(doc, "//td")
+
+txt = xmlValue(preNode)
+
+txt=matrix(txt,ncol=8,byrow=T)
+txt=data.frame(txt)
+colnames(txt)=c('Symbol','Security','GICS Sector','GICS Sub-Industry',
+                'Headquarters Location','Date Added','CIK','Founded')
+
+##S&P 500 contains 503 stocks because it includes two share classes of stock from 3 of its 
+##component companies
+txt=txt[1:502,]
+
+txt$Symbol <- ifelse(grepl('\n', txt$Symbol),
+                     substr(txt$Symbol, 1, nchar(txt$Symbol) - 1),
+                     txt$Symbol)
+txt$CIK <- ifelse(grepl('\n', txt$CIK),
+                  substr(txt$CIK, 1, nchar(txt$CIK) - 1),
+                  txt$CIK)
+txt$Founded <- ifelse(grepl('\n', txt$Founded),
+                      substr(txt$Founded, 1, nchar(txt$Founded) - 1),
+                      txt$Founded)
+txt$'GICS Sector' <- ifelse(grepl('\n', txt$'GICS Sector'),
+                      substr(txt$'GICS Sector', 1, nchar(txt$'GICS Sector') - 1),
+                      txt$'GICS Sector')
+
+knitr::kable(head(txt), caption='S&P500')
+
+```
+*Data Cleaning*
+The dates have been formatted correctly, and it has been giving to the variables useful format. The variable Headquarters Location has been divided in two different variables: Headquarters State and Headquarters City. This helped the analysis.
+
+*Data Analysis*
+Below is the statistics and plots.
+
+```{r pressure, echo=FALSE}
+## exploratory data analysis and summary statistics
+txt$`GICS Sector` <-as.factor(txt$`GICS Sector`)
+txt$`GICS Sub-Industry`<-as.factor(txt$`GICS Sub-Industry`)
+txt$`Date Added`<-as.Date(txt$`Date Added`)
+txt$Founded <-substr(txt$Founded, 1, 4)
+txt$Founded <-as.numeric(txt$Founded)
+
+
+knitr::kable(levels(txt$`GICS Sector`), caption='Sectors S&P500')
+
+data_split <- strsplit(txt$`Headquarters Location`, ',', fixed = TRUE)
+
+txt$`Headquarters City` <- sapply(data_split, function(x) x[1])
+txt$`Headquarters State` <-sapply(data_split, function(x) x[2])
+
+txt$`Headquarters City`<-as.factor(txt$`Headquarters City`)
+txt$`Headquarters State`<-as.factor(txt$`Headquarters State`)
+knitr::kable(summary(txt), caption='Summary statistics S&P500')
+
+library(ggplot2)
+ggplot(txt,aes(y=txt$'GICS Sector'))+
+  geom_bar()+labs(title = "Bar Plot of sector")
+ggplot(txt,aes(x=Founded, fill=txt$`GICS Sector`))+
+  geom_histogram()+labs(title = "Histogram Date Founded",subtitle="segment: GICS Sector")
+ggplot(txt,aes(x=txt$`Date Added`, fill=txt$`GICS Sector`))+
+  geom_histogram()+labs(title = "Histogram Date Added",subtitle="segment: GICS Sector")
+
+x<-data.frame(table(txt$'Headquarters State', txt$'GICS Sector'))
+x<-x[order(x$Freq),]
+colnames(x)<-c('State','Sector','Frequency')
+knitr::kable(tail(x,10)[10:1,], caption = 'Most frequent combinations: State and Sector')
+
+```
+
+Summary statistics and Bar Plot show that S&P 500 stocks belong to 11 different sectors. The most frequent GICS Sector is represented by Industrials, followed by Financials, Health Care and IT.
+
+The first stock added to the S&P 500, and still included, was added on 1957-03-04, when S&P 500 stock market index was introduced. The last stock has been added on 2023-10-02, and 50% of stocks have been added before 2007-05-2021. 
+
+New York City is the city where there are more S&P headquarters, and California is the state there are more headquarters.
+
+Most frequent combinations of State and Sector are shown in the table and they may give some insights: California and IT is the more frequent combination (28), and thanks to the growth of Silicon Valley, almost the 50% of S&P IT Companies are based in this State. Then we have NYC and Financials (20), followed by Texas and Energy (16).
+
+Finally the histograms show when most companies have been founded and added to the index based on sector. 'Histogram Date Added' show that many companies still included have been added when S&P was introduced in 1957. It implies that almost 16% of the index (almost 80 companies) never changed. At the time the most relevant sectors were Industrials and Utilities. Most IT companies have been obviously founded after 1970 and added after 1990. Before 1900, as foundation years, we have mainly Financial companies, that has been added mainly after 1980.
+
+
+
+**PROBLEM 2**
+
+*Introduction*
+The purpose of this report is to analyze information about S&P 500 component stocks. The analysis aims to identify most relevant similarities and distances within a subset of 100 stocks, with the goal of identify possible clusters.
+
+*Data Description*
+The datasets include columns such as  GISC Sector, GICS Sub-Industry, Headquarters Location as categorical data and 76 quantitative variable. It has been decided to select 10 quantitative variable considered most relevant: 'After Tax ROE', 'Cash Ratio', 'Current Ratio', 'Pre Tax Margin', 'Pre Tax ROE', 'Profit Margin', 'Quick Ratio', 'Total Assets', 'Total Liabilities' and 'Earnings Before Tax'. These quantitative data have been normalized from the beginning, because some variable could have had a greater impact than other on the similarity/distance indicators/functions.
+
+```{r pressure2, echo=FALSE}
+## Importing data
+setwd('C:/Users/loaus/OneDrive - stevens.edu/STEVENS/Foundations of Financial Data Science/Assignment/Assignment2/HW2_data')
+df1<-read.csv(file='securities.csv')
+df2<-read.csv(file='fundamentals.csv')
+
+## subset of 100 tickers, year 2013
+df2$Period.Ending <- ifelse(grepl('2013', df2$Period.Ending), df2$Period.Ending, NA)
+df2<-na.omit(df2)
+df2<-df2[1:100,]
+
+library(dplyr)
+df1 <- df1 %>%
+  filter(df1$Ticker.symbol %in% df2$Ticker.Symbol)
+
+colfilter<-c('Ticker.Symbol', 'Period.Ending', 'After.Tax.ROE', 'Cash.Ratio', 'Current.Ratio', 'Pre.Tax.Margin', 
+             'Pre.Tax.ROE', 'Profit.Margin', 'Quick.Ratio', 'Total.Assets', 'Total.Liabilities', 'Earnings.Before.Tax')
+df2<-subset(df2,select = colfilter)
+
+df2 <- df2[order(df2$Ticker.Symbol), ]
+df1 <- df1[order(df1$Ticker.symbol), ]
+df2[,3:12]<-sapply(df2[,3:12],FUN= function(x) (x-mean(x))/sd(x) )
+rownames(df2)<-df2[,1]
+df2<-df2[,3:12]
+
+knitr::kable(head(df2),caption='100 Tickers of S&P500: Quantitative Data')
+knitr::kable(head(df1),caption='100 Tickers of S&P500: Categorical Data')
+```
+
+Next, several distance and similarity functions have been defined and applied to find the extreme values for 
+distance and similarities between the subset of tickers chosen. There are functions that allow to calculate the quantity required for all ticker pairs, and function that allow to calculate the top and bottom 10 values for each case.
+
+First of all, *Lp-Norm function*, that is a distance function, has been defined and applied for p=1, p=2, P=3 and p=10. Below a subset of the resulting tables and the rank of the top and bottom 10 values.
+
+```{r pressure3, echo=FALSE}
+# Lp Norm
+Lp_norm<-function(p){
+  Lp_norm<-c()
+  for (i in 1:100){
+    for (j in 1:100){
+    Lp_norm<- c(Lp_norm, sum(abs(df2[i,]-df2[j,])^p)^(1/p))
+    }
+  }
+  Lp_norm<-matrix(Lp_norm,nrow=100,byrow=T)  
+  Lp_norm<-data.frame(Lp_norm)
+  colnames(Lp_norm)<-rownames(df2)
+  rownames(Lp_norm)<-rownames(df2)
+  return(Lp_norm)
+}
+
+Lp_norm_1<-Lp_norm(p=1)
+Lp_norm_2<-Lp_norm(p=2)
+Lp_norm_3<-Lp_norm(p=3)
+Lp_norm_10<-Lp_norm(p=10)
+
+knitr::kable(subset(head(Lp_norm_1), select=1:10), caption='Lp Norm, Manhattan, p=1')
+knitr::kable(subset(head(Lp_norm_2), select=1:10), caption='Lp Norm, Euclidean, p=2')
+knitr::kable(subset(head(Lp_norm_3), select=1:10), caption='Lp Norm, p=3')
+knitr::kable(subset(head(Lp_norm_10), select=1:10), caption='Lp Norm, p=10')
+
+bottom_10<-function(quantity){
+  x<-sort(unlist(quantity))
+  y<-tail(x,20)
+  z<-names(y)
+  a<-gsub("[0-9]", "", names(y))
+  a<-matrix(a,ncol=2,byrow=T)
+  a<-data.frame(a)
+  for (i in 1:10){
+    a$X3[i]<-quantity[a$X1[i],a$X2[i]]
+  }
+  return(a)
+}
+
+top_10<-function(quantity){
+  x<-sort(unlist(quantity))
+  x<-x[x!=0]
+  y<-head(x,20)
+  z<-names(y)
+  a<-gsub("[0-9]", "", names(y))
+  a<-matrix(a,ncol=2,byrow=T)
+  a<-data.frame(a)
+  for (i in 1:10){
+    a$X3[i]<-quantity[a$X1[i],a$X2[i]]
+  }
+  return(a)
+}
+
+knitr::kable(bottom_10(Lp_norm_1), caption='Bottom 10 values,Lp Norm, Manhattan')
+knitr::kable(top_10(Lp_norm_1), caption='Top 10 values,Lp Norm, Manhattan')
+
+knitr::kable(bottom_10(Lp_norm_2), caption='Bottom 10 values,Lp Norm, Euclidean')
+knitr::kable(top_10(Lp_norm_2), caption='Top 10 values,Lp Norm, Euclidean')
+
+knitr::kable(bottom_10(Lp_norm_3), caption='Bottom 10 values,Lp Norm, p=3')
+knitr::kable(top_10(Lp_norm_3), caption='Top 10 values,Lp Norm, p=3')
+
+knitr::kable(bottom_10(Lp_norm_10), caption='Bottom 10 values,Lp Norm, p=10')
+knitr::kable(top_10(Lp_norm_10), caption='Top 10 values,Lp Norm, p=10')
+```
+
+The diagonals of the resulting Lp_norm tables are equal to 0, because each stock is identical to itself. Lp-Norm, in fact, takes values starting from 0 and it takes on higher values as distance between the pair of observations increases. Therefore, the bottom 10 values tables show the most different pairs of stock based on the 10 quantitative variables, and the top 10 values tables show the most similar ones. Lp-Norm show different ranks for different values of p. In fact, higer values of p implies to using more and emphasizing the dimensions where the two objects are the most dissimilar.
+
+
+
+The second distance function computed is *Minkoswki distance*. This function allows to give more weight to the variables considered more relevant in the analysis. In this case, most relevant variables are: 'Current Ratio', 'Pre Tax Margin' and 'Earning Before Tax'. Below a subset of the resulting tables and the rank of the top and bottom 10 values.
+
+
+```{r pressure4, echo=FALSE}
+# Minkowski
+weights<-c(0.5,0.7,0.8,0.9,1,0.7,0.3,0.2,0.2,0.8)
+Minkowski<-function(p){
+  Minkowski<-c()
+  for (i in 1:100){
+    for (j in 1:100){
+      Minkowski<- c(Minkowski, sum(weights*abs(df2[i,]-df2[j,])^p)^(1/p))
+    }
+  }
+  Minkowski<-matrix(Minkowski,nrow=100,byrow=T)  
+  Minkowski<-data.frame(Minkowski)
+  colnames(Minkowski)<-rownames(df2)
+  rownames(Minkowski)<-rownames(df2)
+  return(Minkowski)
+}
+
+Minkowski_1<-Minkowski(p=1)
+Minkowski_2<-Minkowski(p=2)
+Minkowski_3<-Minkowski(p=3)
+Minkowski_10<-Minkowski(p=10)
+
+knitr::kable(subset(head(Minkowski_1), select=1:10), caption='Minkowski, p=1')
+knitr::kable(subset(head(Minkowski_2), select=1:10), caption='Minkowski, p=2')
+knitr::kable(subset(head(Minkowski_3), select=1:10), caption='Minkowski, p=3')
+knitr::kable(subset(head(Minkowski_10), select=1:10), caption='Minkowski, p=10')
+
+knitr::kable(bottom_10(Minkowski_1), caption='Bottom 10 values,Minkowski, p=1')
+knitr::kable(top_10(Minkowski_1), caption='Top 10 values,Minkowski, p=1')
+
+knitr::kable(bottom_10(Minkowski_2), caption='Bottom 10 values,Minkowski, p=2')
+knitr::kable(top_10(Minkowski_2), caption='Top 10 values,Minkowski, p=2')
+
+knitr::kable(bottom_10(Minkowski_3), caption='Bottom 10 values,Minkowski, p=3')
+knitr::kable(top_10(Minkowski_3), caption='Top 10 values,Minkowski, p=3')
+
+knitr::kable(bottom_10(Minkowski_10), caption='Bottom 10 values,Minkowski, p=10')
+knitr::kable(top_10(Minkowski_10), caption='Top 10 values,Minkowski, p=10')
+```
+
+Also in this case the diagonals of the resulting Lp_norm tables are equal to 0, because each stock is identical to itself. Minkowski distance takes values starting from 0 and it takes on higher values as distance between the pair of observations increases. Therefore, the bottom 10 values tables show the most different pairs of stock based on the 10 quantitative variables, and the top 10 values tables show the most similar ones. Minkowski distance show different ranks for different values of p as well.
+
+Afterwards, dividing each variable in 4 equi-depth buckets, *Match-Based Similarity Computation* has been computed. Below a subset of the resulting table and the rank of the top and bottom 10 values.
+
+```{r pressure5, echo=FALSE}
+
+#Match-Based Similarity Computation (4 equi-depth bucket)
+df3<-sapply(df2,FUN=function(x) cut(x,c(quantile(x,0), quantile(x,0.25),quantile(x,0.50),
+                                    quantile(x,0.75),quantile(x,1)),include.lowest=T))
+df3<-data.frame(df3)
+for (i in 1:10){
+  df3[,i]<-factor(df3[,i])
+  levels<-levels(df3[,i])
+  start_interv <- as.numeric(sapply(levels, function(x) {
+    if (substring(x, 1, 1) == "(") {
+      return(as.numeric(sub("^\\((.*?),.*\\]", "\\1", x)))
+    } else if (substring(x, 1, 1) == "[") {
+      return(as.numeric(sub("^\\[(.*?),.*\\]", "\\1", x)))
+    }
+  }))
+  levels_ordered <- levels[order(start_interv)]
+  df3[,i]<-factor(df3[,i],levels = levels_ordered)
+}
+
+similarity<-function(p){
+  similarity<-matrix(NA,nrow=100,ncol=100)
+  rownames(similarity)<-rownames(df2)
+  colnames(similarity)<-rownames(df2)
+  for (i in 1:100){
+    for (j in 1:100){
+      match<-c()
+      for (z in 1:10){
+        if (as.numeric(df3[i,z])==1){
+            quartile<-0.25}
+        else if (as.numeric(df3[i,z])==2){
+            quartile<-0.5}
+        else if (as.numeric(df3[i,z])==3){
+            quartile<-0.75}
+        else {
+            quartile<-1}
+        if (df3[i,z]==df3[j,z]){
+          diff<-quantile(df2[,z],quartile)- quantile(df2[,z],quartile-0.25)
+          match<-c(match, (1 - (abs(df2[i,z]-df2[j,z])/diff))^p)}}
+      similarity[i,j]<-(sum(match))^1/p
+    }
+  }
+  return(data.frame(similarity))
+}
+
+similarity<-similarity(1)
+
+knitr::kable(subset(head(similarity), select=1:10),caption = 'Matched Based Similarity Computation: 4 equi-depth buckets')
+
+bottom_10<-function(quantity){
+  x<-sort(unlist(quantity))
+  x<-x[x!=10]
+  y<-tail(x,20)
+  z<-names(y)
+  a<-gsub("[0-9]", "", names(y))
+  a<-matrix(a,ncol=2,byrow=T)
+  a<-data.frame(a)
+  for (i in 1:10){
+    a$X3[i]<-quantity[a$X1[i],a$X2[i]]
+  }
+  return(a)
+}
+
+top_10<-function(quantity){
+  x<-sort(unlist(quantity))
+  y<-x[x==0]
+  z<-names(y)
+  a<-gsub("[0-9]", "", names(y))
+  b<-as.numeric(gsub("[A-Z]", "", names(y)))
+  b<-rownames(quantity)[b]
+  a<-cbind(a,b)
+  res<-data.frame(a)
+  for (i in 1:nrow(res)){
+    res$zeros[i]<-quantity[res$a[i],res$b[i]]}
+  return(res)
+}
+
+knitr::kable(bottom_10(similarity), caption='Bottom 10 values, Matched Based Similarity')
+top<-top_10(similarity)
+top$pair <- apply(top, 1, function(x) paste(sort(x), collapse="-"))
+top <-top[!duplicated(top$pair),]
+top<-subset(top,select=c(1,2,3))
+knitr::kable(head(top,10), caption='Top 10 values, Matched Based Similarity')
+```
+
+The diagonal of the resulting table is equal to 10, because each stock is identical to itself. Match-based similarity is, in fact, a similarity function and it takes on higher values as similarity between the pair of observations increases. The max value is 10. Therefore, the bottom 10 values tables show the most similar pairs of stock based on the 10 quantitative variables, and the top 10 values tables show the most different ones. 
+
+
+
+Then, *Malahanobis distance*, that is a distance function, has been defined and applied. It is similar to the Euclidean distance (Lp-Norm with p=2), except that it normalizes the data on the basis of the inter-attribute correlations. Below a subset of the resulting table and the rank of the top and bottom 10 values
+
+```{r pressure6, echo=FALSE}
+# Mahalanobis distance
+
+df4<-as.matrix(df2)
+matrice_var_cov <- cov(df4)
+Maha<-function(){
+  Maha<-c()
+  for (i in 1:100){
+    for (j in 1:100){
+      Maha<- c(Maha, sqrt((df4[i,]-df4[j,]) %*%matrice_var_cov%*%(df4[i,]-df4[j,])))
+    }
+  }
+  Maha<-matrix(Maha,nrow=100,byrow=T)  
+  Maha<-data.frame(Maha)
+  colnames(Maha)<-rownames(df2)
+  rownames(Maha)<-rownames(df2)
+  return(Maha)
+}
+Maha<-Maha()
+knitr::kable(subset(head(Maha), select=1:10),caption = 'Mahalanobis distance')
+
+bottom_10<-function(quantity){
+  x<-sort(unlist(quantity))
+  y<-tail(x,20)
+  z<-names(y)
+  a<-gsub("[0-9]", "", names(y))
+  a<-matrix(a,ncol=2,byrow=T)
+  a<-data.frame(a)
+  for (i in 1:10){
+    a$X3[i]<-quantity[a$X1[i],a$X2[i]]
+  }
+  return(a)
+}
+
+top_10<-function(quantity){
+  x<-sort(unlist(quantity))
+  x<-x[x!=0]
+  y<-head(x,20)
+  z<-names(y)
+  a<-gsub("[0-9]", "", names(y))
+  a<-matrix(a,ncol=2,byrow=T)
+  a<-data.frame(a)
+  for (i in 1:10){
+    a$X3[i]<-quantity[a$X1[i],a$X2[i]]
+  }
+  return(a)
+}
+
+knitr::kable(bottom_10(Maha), caption='Bottom 10 values, Mahalanobis distance')
+knitr::kable(top_10(Maha), caption='Top 10 values, Mahalanobis distance')
+```
+
+The diagonal of the resulting table is equal to 0, because each stock is identical to itself. Mahalanobis distance in fact, takes values starting from 0 and it takes on higher values as distance between the pair of observations increases. Therefore, the bottom 10 values tables show the most different pairs of stock based on the 10 quantitative variables, and the top 10 values tables show the most similar ones.
+
+As for Categorical data, since no ordering exists, it is more common to work with similarity functions matching different values. The first similarity function for the categorical attribute of the stocks of S&P 500 is the *Overlap measure*. Given two stocks, this measure represents the number of the attributes for which the two stocks has the same value. Since we consider 3 categorical variables (Sector, Sub Industry and Headquarters Location), the max value is 3. Below a subset of the resulting table and the rank of the top and bottom 10 values
+
+```{r pressure7, echo=FALSE}
+###Categorical data
+
+#Similarity: overlap measure
+rownames(df1)<-df1[,1]
+df1<-df1[,4:6]
+
+overlap<-function(){
+  overlap<-matrix(NA,nrow=100,ncol=100)
+  rownames(overlap)<-rownames(df1)
+  colnames(overlap)<-rownames(df1)
+  for (i in 1:100){
+    for (j in 1:100){
+      match<-c()
+      for (z in 1:3){
+        if (df1[i,z]==df1[j,z]){
+          match<-c(match, 1)}
+      overlap[i,j]<-sum(match)}
+      }
+  }
+  return(data.frame(overlap))
+}
+
+overlap<-overlap()
+knitr::kable(subset(head(overlap), select=1:10), caption= 'Similarity: Overlap Measure')
+
+top_10<-function(quantity){
+  x<-sort(unlist(quantity))
+  y<-head(x,20)
+  z<-names(y)
+  a<-gsub("[0-9]", "", names(y))
+  b<-as.numeric(gsub("[A-Z]", "", names(y)))
+  b<-rownames(quantity)[b]
+  a<-cbind(a,b)
+  res<-data.frame(a)
+  for (i in 1:nrow(res)){
+    res$zeros[i]<-quantity[res$a[i],res$b[i]]}
+  return(res)
+}
+
+bottom_10<-function(quantity){
+  x<-sort(unlist(quantity))
+  a<-gsub("[0-9]", "", names(x))
+  b<-as.numeric(gsub("[A-Z]", "", names(x)))
+  b<-rownames(quantity)[b]
+  p<-cbind(a,b)
+  p<-p[a!=b,]
+  y<-tail(p,20)
+  res<-data.frame(y)
+  for (i in 1:nrow(res)){
+    res$zeros[i]<-quantity[res$a[i],res$b[i]]}
+  return(res)
+}
+
+bottom<-bottom_10(overlap)
+bottom$pair <- apply(bottom, 1, function(x) paste(sort(x), collapse="-"))
+bottom <-bottom[!duplicated(bottom$pair),]
+bottom<-subset(bottom,select=c(1,2,3))
+knitr::kable(tail(bottom,10), caption='Bottom 10 values, Overlap Measure')
+
+top<-top_10(overlap)
+top$pair <- apply(top, 1, function(x) paste(sort(x), collapse="-"))
+top <-top[!duplicated(top$pair),]
+top<-subset(top,select=c(1,2,3))
+knitr::kable(head(top,10), caption='Top 10 values, Overlap Measure')
+```
+
+The diagonal of the resulting table is equal to 3, because each stock is identical to itself. It takes values starting from 0 and it takes on higher values as similarity between the pair of observations increases. Therefore, the bottom 10 values tables show the most similar pairs of stock based on the 3 categorical variables, and the top 10 values tables show the most different ones.
+
+
+
+However, this method does not consider relative frequencies among different attributes. Therefore, *Inverse frequency* and *Goodall measure* have been computed. In this cases, for example, if 2 stocks match a variable in a rare value, it counts more than matching in a common value. Below a subset of the resulting tables and the rank of the top and bottom 10 values.
+
+```{r pressure8, echo=FALSE}
+#Similarity: inverse frequency
+inverse<-function(){
+  inverse<-matrix(NA,nrow=100,ncol=100)
+  rownames(inverse)<-rownames(df1)
+  colnames(inverse)<-rownames(df1)
+  for (i in 1:100){
+    for (j in 1:100){
+      match<-c()
+      for (z in 1:3){
+        if (df1[i,z]==df1[j,z]){
+          n<-(sum(df1[,z]==df1[i,z])/nrow(df1))^2
+          match<-c(match, 1/n)}
+        inverse[i,j]<-sum(match)}
+    }
+  }
+  return(data.frame(inverse))
+}
+
+inverse<-inverse()
+knitr::kable(subset(head(inverse), select=1:10), caption= 'Similarity: Inverse frequency')
+
+bottom_10<-function(quantity){
+  x<-sort(unlist(quantity))
+  x<-x[1:9900]
+  y<-tail(x,20)
+  z<-names(y)
+  a<-gsub("[0-9]", "", names(y))
+  b<-as.numeric(gsub("[A-Z]", "", names(y)))
+  b<-rownames(quantity)[b]
+  a<-cbind(a,b)
+  a<-data.frame(a)
+  for (i in 1:nrow(a)){
+    a$zeros[i]<-quantity[a$a[i],a$b[i]]}
+  return(a)
+}
+
+
+bottom<-bottom_10(inverse)
+bottom$pair <- apply(bottom, 1, function(x) paste(sort(x), collapse="-"))
+bottom <-bottom[!duplicated(bottom$pair),]
+bottom<-subset(bottom,select=c(1,2,3))
+knitr::kable(bottom, caption='Bottom 10 values, Inverse frequency')
+
+top_n<-function(quantity){
+  x<-sort(unlist(quantity))
+  y<-head(x,20)
+  z<-names(y)
+  a<-gsub("[0-9]", "", names(y))
+  b<-as.numeric(gsub("[A-Z]", "", names(y)))
+  b<-rownames(quantity)[b]
+  a<-cbind(a,b)
+  res<-data.frame(a)
+  for (i in 1:nrow(res)){
+    res$zeros[i]<-quantity[res$a[i],res$b[i]]}
+  return(res)
+}
+
+top<-top_n(inverse)
+top$pair <- apply(top, 1, function(x) paste(sort(x), collapse="-"))
+top <-top[!duplicated(top$pair),]
+top<-subset(top,select=c(1,2,3))
+knitr::kable(head(top,10), caption='Top 10 values, Inverse frequency')
+```
+
+```{r pressure9, echo=FALSE}
+#Similarity: Goodall
+goodall<-function(){
+  goodall<-matrix(NA,nrow=100,ncol=100)
+  rownames(goodall)<-rownames(df1)
+  colnames(goodall)<-rownames(df1)
+  for (i in 1:100){
+    for (j in 1:100){
+      match<-c()
+      for (z in 1:3){
+        if (df1[i,z]==df1[j,z]){
+          n<-(sum(df1[,z]==df1[i,z])/nrow(df1))^2
+          match<-c(match, 1-n)}
+        goodall[i,j]<-sum(match)}
+    }
+  }
+  return(data.frame(goodall))
+}
+
+goodall<-goodall()
+knitr::kable(subset(head(goodall), select=1:10), caption= 'Similarity: Goodall')
+
+bottom_10<-function(quantity){
+  x<-sort(unlist(quantity))
+  a<-gsub("[0-9]", "", names(x))
+  b<-as.numeric(gsub("[A-Z]", "", names(x)))
+  b<-rownames(quantity)[b]
+  p<-cbind(a,b)
+  p<-p[a!=b,]
+  y<-tail(p,20)
+  res<-data.frame(y)
+  for (i in 1:nrow(res)){
+    res$zeros[i]<-quantity[res$a[i],res$b[i]]}
+  return(res)
+}
+
+
+bottom<-bottom_10(goodall)
+bottom$pair <- apply(bottom, 1, function(x) paste(sort(x), collapse="-"))
+bottom <-bottom[!duplicated(bottom$pair),]
+bottom<-subset(bottom,select=c(1,2,3))
+knitr::kable(tail(bottom,10), caption='Bottom 10 values, Goodall')
+
+top_n<-function(quantity){
+  x<-sort(unlist(quantity))
+  y<-head(x,20)
+  z<-names(y)
+  a<-gsub("[0-9]", "", names(y))
+  b<-as.numeric(gsub("[A-Z]", "", names(y)))
+  b<-rownames(quantity)[b]
+  a<-cbind(a,b)
+  res<-data.frame(a)
+  for (i in 1:nrow(res)){
+    res$zeros[i]<-quantity[res$a[i],res$b[i]]}
+  return(res)
+}
+
+top<-top_n(goodall)
+top$pair <- apply(top, 1, function(x) paste(sort(x), collapse="-"))
+top <-top[!duplicated(top$pair),]
+top<-subset(top,select=c(1,2,3))
+knitr::kable(head(top,10), caption='Top 10 values, Goodall')
+```
+
+These above are similarity measures, and they takes values starting from 0 and it takes on higher values as similarity between the pair of observations increases. Therefore, the bottom 10 values tables show the most similar pairs of stock based on the 3 categorical variables, and the top 10 values tables show the most different ones.
+Inverse frequency and Goodall measure, used to calculate similarity for categorical data, consider relative frequencies among different attributes: matching a variable in a rare value counts more than matching in a common value.
+
+
+
+Finally, we merged the quantitative dataset and the categorical dataset to create a unique mixed type data dataset relative to the 100 stocks of the S&P 500 subset. After that, *Overall similarity* has been computed. This measure allows to use the overlap approach to mixed data by adding the weights of the numeric and quantitative components. A weight lambda (for numerical data) equal to 0.6 has been chosen (1-lambda for categorical).
+
+
+```{r pressure10, echo=FALSE}
+##Mixed data: categorical and quantitative
+#Overall similarity between tickers by using mixed type data
+df.all<-cbind(df1,df2)
+
+overall<-function(){
+  overall<-matrix(NA,nrow=100,ncol=100)
+  lambda<-0.6
+  rownames(overall)<-rownames(df.all)
+  colnames(overall)<-rownames(df.all)
+  for (i in 1:100){
+    for (j in 1:100){
+      match<-c()
+      for (z in 1:3){
+        if (df.all[i,z]==df.all[j,z]){
+          match<-c(match, 1*(1-lambda))}}
+      for (z in 4:13){
+        if (df.all[i,z]==df.all[j,z]){
+          match<-c(match, 1*(lambda))}}
+      overall[i,j]<-sum(match)
+      }
+    }
+  return(data.frame(overall))
+}
+
+overall<-overall()
+knitr::kable(subset(head(overall), select=1:10),caption='Overall similarity using mixed type data')
+
+top_10<-function(quantity){
+  x<-sort(unlist(quantity))
+  y<-head(x,20)
+  z<-names(y)
+  a<-gsub("[0-9]", "", names(y))
+  b<-as.numeric(gsub("[A-Z]", "", names(y)))
+  b<-rownames(quantity)[b]
+  a<-cbind(a,b)
+  res<-data.frame(a)
+  for (i in 1:nrow(res)){
+    res$zeros[i]<-quantity[res$a[i],res$b[i]]}
+  return(res)
+}
+
+top<-top_10(overall)
+top$pair <- apply(top, 1, function(x) paste(sort(x), collapse="-"))
+top <-top[!duplicated(top$pair),]
+top<-subset(top,select=c(1,2,3))
+knitr::kable(head(top,10), caption='Top 10 values, overall similarity')
+
+bottom_10<-function(quantity){
+  x<-sort(unlist(quantity))
+  x<-x[1:9900]
+  y<-tail(x,20)
+  z<-names(y)
+  a<-gsub("[0-9]", "", names(y))
+  b<-as.numeric(gsub("[A-Z]", "", names(y)))
+  b<-rownames(quantity)[b]
+  a<-cbind(a,b)
+  a<-data.frame(a)
+  for (i in 1:nrow(a)){
+    a$zeros[i]<-quantity[a$a[i],a$b[i]]}
+  return(a)
+}
+
+bottom<-bottom_10(overall)
+bottom$pair <- apply(bottom, 1, function(x) paste(sort(x), collapse="-"))
+bottom <-bottom[!duplicated(bottom$pair),]
+bottom<-subset(bottom,select=c(1,2,3))
+knitr::kable(tail(bottom,10), caption='Bottom 10 values, overall similarity')
+
+```
+
+This above is a similarity measure, and it takes values starting from 0 and it takes on higher values as similarity between the pair of observations increases. Therefore, the bottom 10 values tables show the most similar pairs of stock based on the 13 variables, and the top 10 values tables show the most different ones. Below the *Overall normalized similarity* measure, that is a similarity measure.
+
+```{r pressure11, echo=FALSE}
+#Overall normalized similarity between tickers by using mixed type data
+overall_cat<-function(){
+  overall_norm<-matrix(NA,nrow=100,ncol=100)
+  lambda<-0.6
+  rownames(overall_norm)<-rownames(df.all)
+  colnames(overall_norm)<-rownames(df.all)
+  for (i in 1:100){
+    for (j in 1:100){
+      match<-c()
+      for (z in 1:3){
+        if (df.all[i,z]==df.all[j,z]){
+          match<-c(match, 1*(1-lambda))}}
+      overall[i,j]<-sum(match)
+    }
+  }
+  return(data.frame(overall))
+}
+
+
+overall_num<-function(){
+  overall_norm<-matrix(NA,nrow=100,ncol=100)
+  lambda<-0.6
+  rownames(overall_norm)<-rownames(df.all)
+  colnames(overall_norm)<-rownames(df.all)
+  for (i in 1:100){
+    for (j in 1:100){
+      match<-c()
+      for (z in 4:13){
+        if (df.all[i,z]==df.all[j,z]){
+          match<-c(match, 1*(lambda))}}
+      overall[i,j]<-sum(match)
+    }
+  }
+  return(data.frame(overall))
+}
+
+overall_num<-overall_num()
+overall_cat<-overall_cat()
+
+a<-gsub("[0-9]", "", names(sort(unlist(overall_num))))
+b<-as.numeric(gsub("[A-Z]", "", names(unlist(overall_num))))
+b<-rownames(df1)[b]
+res<-cbind(a,b)
+res<-data.frame(res)
+res<-res[1:9900,]
+for (i in 1:nrow(res)){
+  res$zeros[i]<-overall_num[res$a[i],res$b[i]]}
+
+num_std<-sd(res$zeros)
+
+a<-gsub("[0-9]", "", names(sort(unlist(overall_cat))))
+b<-as.numeric(gsub("[A-Z]", "", names(unlist(overall_cat))))
+b<-rownames(df1)[b]
+res<-cbind(a,b)
+res<-data.frame(res)
+res<-res[1:9900,]
+
+cat_std<-sd(unlist(overall_cat))
+
+overall_norm<-function(){
+  overall_norm<-matrix(NA,nrow=100,ncol=100)
+  lambda<-0.6
+  rownames(overall_norm)<-rownames(df.all)
+  colnames(overall_norm)<-rownames(df.all)
+  for (i in 1:100){
+    for (j in 1:100){
+      match<-c()
+      for (z in 1:3){
+        if (df.all[i,z]==df.all[j,z]){
+          match<-c(match, 1*(1-lambda)/cat_std)}}
+      for (z in 4:13){
+        if (df.all[i,z]==df.all[j,z]){
+          match<-c(match, 1*(lambda)/num_std)}}
+      overall_norm[i,j]<-sum(match)
+    }
+  }
+  return(data.frame(overall_norm))
+}
+
+overall_norm<-overall_norm()
+knitr::kable(subset(head(overall_norm), select=1:10),caption='Overall normalized similarity using mixed type data')
+
+bottom<-bottom_10(overall_norm)
+bottom$pair <- apply(bottom, 1, function(x) paste(sort(x), collapse="-"))
+bottom <-bottom[!duplicated(bottom$pair),]
+bottom<-subset(bottom,select=c(1,2,3))
+knitr::kable(tail(bottom,10), caption='Bottom 10 values, overall normalized similarity')
+
+top<-top_10(overall_norm)
+top$pair <- apply(top, 1, function(x) paste(sort(x), collapse="-"))
+top <-top[!duplicated(top$pair),]
+top<-subset(top,select=c(1,2,3))
+knitr::kable(head(top,10), caption='Top 10 values, overall normalized similarity')
+
+```
