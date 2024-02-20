@@ -1,0 +1,645 @@
+---
+title: "Assignment 3"
+author: "Lorenzo Ausiello"
+date: "2023-11-14"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(echo = FALSE, out.width="100%",out.height="100%", warning = F)
+```
+
+
+**Problem 1**
+
+After downloading data from “Weekly” file, some statistics has been performed. Out of 1089 observations, 484 show a Down Direction of prices on Today, and 605 show a Up Direction. Box-plots and scatterplots, together with numerical summaries, demonstrate that both Down and Up today Directions of prices are preceded by returns on average close to zero. Therefore, for sure it will be difficult to try to explain the Direction feature in terms of lag returns (returns of previous days). As for volume, the same consideration applies: very little differences of the means in the two different levels. Below the numerical and graphical statistics/summaries.
+```{r cars}
+#store data in a variable
+setwd('C:/Users/loaus/OneDrive - stevens.edu/STEVENS/Foundations of Financial Data Science/Assignment/Assignment3/HW3_data')
+weekly_dir<-read.csv('Weekly.csv')
+knitr::kable(head(weekly_dir),caption = 'Dataset')
+
+#exploratory data analysis
+library(ggplot2)
+library(gridExtra)
+library(doBy)
+weekly_dir$Direction<-as.factor(weekly_dir$Direction)
+knitr::kable(summary(weekly_dir),caption = 'Summary')
+contrasts(weekly_dir$Direction)
+
+par(mfrow = c(2, 3))
+plot1 <- ggplot(data = weekly_dir, aes(y = Lag1, x = Direction)) +
+  geom_boxplot() +
+  ggtitle("Box Plot: Lag1 and Direction")
+plot2 <- ggplot(data = weekly_dir, aes(y = Lag2, x = Direction)) +
+  geom_boxplot() +
+  ggtitle("Box Plot: Lag2 and Direction")
+plot3 <- ggplot(data = weekly_dir, aes(y = Lag3, x = Direction)) +
+  geom_boxplot() +
+  ggtitle("Box Plot: Lag3 and Direction")
+plot4 <- ggplot(data = weekly_dir, aes(y = Lag4, x = Direction)) +
+  geom_boxplot() +
+  ggtitle("Box Plot: Lag4 and Direction")
+plot5 <- ggplot(data = weekly_dir, aes(y = Lag5, x = Direction)) +
+  geom_boxplot() +
+  ggtitle("Box Plot: Lag5 and Direction")
+plot6 <- ggplot(data = weekly_dir, aes(y = Volume, x = Direction)) +
+  geom_boxplot() +
+  ggtitle("Box Plot: Volume and Direction")
+
+grid.arrange(plot1, plot2, plot3, plot4, plot5, plot6)
+
+
+{par(mfrow = c(2, 3))
+plot(Today ~ Lag1, col = "darkred", data = weekly_dir)
+simplelm1 <- lm(Today ~ Lag1, data = weekly_dir)
+abline(simplelm1, lwd = 3, col = "darkgreen")
+title("Today vs. Lag1")
+plot(Today ~ Lag2, col = "darkred", data = weekly_dir)
+simplelm2 <- lm(Today ~ Lag2, data = weekly_dir)
+abline(simplelm2, lwd = 3, col = "darkgreen")
+title("Today vs. Lag2")
+plot(Today ~ Lag3, col = "darkred", data = weekly_dir)
+simplelm3 <- lm(Today ~ Lag3, data = weekly_dir)
+abline(simplelm3, lwd = 3, col = "darkgreen")
+title("Today vs. Lag3")
+plot(Today ~ Lag4, col = "darkred", data = weekly_dir)
+simplelm4 <- lm(Today ~ Lag4, data = weekly_dir)
+abline(simplelm4, lwd = 3, col = "darkgreen")
+title("Today vs. Lag4")
+plot(Today ~ Lag5, col = "darkred", data = weekly_dir)
+simplelm5 <- lm(Today ~ Lag5, data = weekly_dir)
+abline(simplelm5, lwd = 3, col = "darkgreen")
+title("Today vs. Lag5")
+plot(Today ~ Volume, col = "darkred", data = weekly_dir)
+simplelm6 <- lm(Today ~ Volume, data = weekly_dir)
+abline(simplelm6, lwd = 3, col = "darkgreen")
+title("Today vs. Volume")}
+
+quant_analysis<-function(x){
+  c(mean(x),length(x),min(x),max(x))
+}
+
+summary.Lag1.Dir<-summaryBy(Lag1~Direction, data=weekly_dir, FUN=quant_analysis)
+colnames(summary.Lag1.Dir)<-c('Direction','Mean','Length','Min','Max')
+summary.Lag2.Dir<-summaryBy(Lag2~Direction, data=weekly_dir, FUN=quant_analysis)
+colnames(summary.Lag2.Dir)<-c('Direction','Mean','Length','Min','Max')
+summary.Lag3.Dir<-summaryBy(Lag3~Direction, data=weekly_dir, FUN=quant_analysis)
+colnames(summary.Lag3.Dir)<-c('Direction','Mean','Length','Min','Max')
+summary.Lag4.Dir<-summaryBy(Lag4~Direction, data=weekly_dir, FUN=quant_analysis)
+colnames(summary.Lag4.Dir)<-c('Direction','Mean','Length','Min','Max')
+summary.Lag5.Dir<-summaryBy(Lag5~Direction, data=weekly_dir, FUN=quant_analysis)
+colnames(summary.Lag5.Dir)<-c('Direction','Mean','Length','Min','Max')
+summary.Volume.Dir<-summaryBy(Volume~Direction, data=weekly_dir, FUN=quant_analysis)
+colnames(summary.Volume.Dir)<-c('Direction','Mean','Length','Min','Max')
+knitr::kable(summary.Lag1.Dir,caption = 'Summary By: Lag1')
+knitr::kable(summary.Lag2.Dir,caption = 'Summary By: Lag2')
+knitr::kable(summary.Lag3.Dir,caption = 'Summary By: Lag3')
+knitr::kable(summary.Lag4.Dir,caption = 'Summary By: Lag4')
+knitr::kable(summary.Lag5.Dir,caption = 'Summary By: Lag5')
+knitr::kable(summary.Volume.Dir,caption = 'Summary By: Volume')
+```
+
+
+In this logistic regression analysis below, the entire dataset was utilized to model the relationship between the response variable "Direction" and the predictors, encompassing five lag variables (Lag 1, Lag 2, Lag 3, Lag 4, and Lag 5) along with "Volume." As result, only Lag 2 appear to be statistically significant. It means that returns of the second day of the week show relationship with the likelihood of a specific direction. Particularly, the logistic regression performed result in a coefficient for Lag 2 positive and equal to 0.05844. The higher the Lag 2, the higher the probability to have an Up Direction.
+However, if we check the model on the same data used to build the regression, we notice that overall error rate is equal to 43,89%! This is mainly due to the fact that 88.84% of true down have not been correctly identified. Indeed, only 7.93% of true up have not been correctly predicted.
+
+```{r cars567}
+
+##Logistic regression
+glm.direction.lags=glm(Direction~Lag1+Lag2+Lag3+Lag4+Lag5+Volume,data=weekly_dir,family=binomial)
+summary(glm.direction.lags)
+knitr::kable(confint(glm.direction.lags), caption = 'Logistic regression: confidence interval')
+
+#predicted values and performance check
+glm.probs=predict(glm.direction.lags,newdata = weekly_dir, type="response")
+glm.pred=rep("Down",dim(weekly_dir)[1])
+glm.pred[glm.probs>0.5]="Up"
+prediction.glm=cbind(weekly_dir,glm.pred)
+colnames(prediction.glm)[10]="Direction prediction"
+knitr::kable(head(prediction.glm), caption= 'Direction prediction included in original dataset')
+
+#confusion matrix
+knitr::kable(table(glm.pred,weekly_dir$Direction), caption = 'Logistic: Confusion matrix')
+knitr::kable(mean(glm.pred == weekly_dir$Direction), caption = '% of predictions that are correct')
+
+#overall error rate
+knitr::kable(1-mean(glm.pred == weekly_dir$Direction), caption = 'Overall error rate: logistic')
+
+#percentage of true down not identified
+knitr::kable(430/(430+54), caption = '% of true down not identified')
+
+#percentage of true up not correctly identified
+knitr::kable(48/(48+557), caption = '% of true up not identified')
+```
+
+Then, the logistic regression analysis was conducted using a training data period spanning from 1990 to 2008, with Lag2 as the sole predictor. Subsequently, the model was employed to predict the direction of the market for the held-out data from 2009 and 2010. 
+Following this, three additional classification methods were employed and evaluated using the same training and testing data: Linear Discriminant Analysis (LDA), Quadratic Discriminant Analysis (QDA), and K-Nearest Neighbors (KNN) with K = 1, 2,3,4,5,6,10 and 20. Each method generated its own confusion matrix and overall fraction of correct predictions.
+
+
+Logistic Regression and Linear Discriminant Analysis (LDA) exhibit identical error rates of 0.375, indicating comparable accuracy in predicting market direction. Quadratic Discriminant Analysis (QDA) shows a slightly higher error rate at 0.4134615. Moving beyond, Table 45 introduces additional K-Nearest Neighbors (KNN) models with different values of K. Notably, KNN1 and KNN2 display higher error rates of 0.5, while subsequent KNN models (KNN3 to KNN20) exhibit varying error rates between 0.4230769 and 0.4615385. This is due to the fact that the lower the K the higher the overfitting issue (for k=1, perfect overfitting on training data). The choice of the most effective method depends on specific analysis goals and considerations, with lower error rates generally indicating better predictive performance. Further evaluation, considering other metrics and study objectives, is essential for a comprehensive assessment.
+
+
+Remember: Logistic regression, LDA, QDA, and KNN each have their strengths and assumptions. Logistic regression, for instance, is robust when linear relationships are present, while LDA and QDA assume different covariance structures. KNN, on the other hand, relies on proximity in feature space.
+
+```{r cars345}
+
+#splitting dataset in training and test data
+training=weekly_dir[1:985,]
+test=weekly_dir[986:1089,]
+
+##Logistic regression: training data
+glm.fit=glm(Direction~Lag2,data=training,family=binomial)
+summary(glm.fit)
+knitr::kable(confint(glm.fit), caption = 'Logistic regression (training data): confidence interval')
+
+#prediction and performance check: test data
+glm.probs=predict(glm.fit,newdata = test, type="response")
+glm.pred=rep("Down",dim(test)[1])
+glm.pred[glm.probs>0.5]="Up"
+prediction.glm=cbind(test,glm.pred)
+colnames(prediction.glm)[10]="Direction prediction"
+knitr::kable(head(prediction.glm), caption= 'Direction prediction included in original test dataset')
+
+#confusion matrix
+knitr::kable(table(glm.pred,test$Direction), caption = 'Confusion matrix: test data (logistic)')
+knitr::kable(mean(glm.pred == test$Direction), caption = '% of predictions that are correct')
+
+#overall error rate
+Logistic=1-mean(glm.pred == test$Direction)
+knitr::kable(Logistic, caption = 'Overall error rate on test data (logistic)')
+
+Lag2<-seq(-100,100,0.01)
+prob<-exp(glm.fit$coefficients[1]+glm.fit$coefficients[2]*Lag2)/(1+exp(glm.fit$coefficients[1]+glm.fit$coefficients[2]*Lag2))
+graph<-data.frame(Lag2,prob)
+ggplot(graph, aes(x=Lag2,y=prob))+
+  geom_ribbon(aes(ymin=0,ymax=1),alpha=0.2)+geom_line(size=1)
+
+
+
+##LDA
+library(MASS)
+lda.fit=lda(Direction~Lag2,data=training)
+lda.fit
+plot(lda.fit)
+
+#prediction and performance check: test data
+lda.pred=predict(lda.fit,test)
+lda.class=lda.pred$class
+prediction.lda=cbind(test,lda.class)
+colnames(prediction.lda)[10]="Direction prediction"
+knitr::kable(head(prediction.lda), caption = 'LDA: Direction prediction included in original test dataset')
+
+#confusion matrix
+knitr::kable(table(lda.class ,test$Direction), caption = 'LDA: Confusion Matrix')
+
+#overall error rate
+LDA=1-mean(lda.class == test$Direction)
+knitr::kable(LDA, caption = 'Overall Error rate: LDA')
+
+
+#QDA
+qda.fit=qda(Direction~Lag2,data=training)
+qda.fit
+
+#prediction and performance check: test data
+qda.pred=predict(qda.fit,test)
+qda.class=qda.pred$class
+prediction.qda=cbind(test,qda.class)
+colnames(prediction.qda)[10]="Direction prediction"
+knitr::kable(head(prediction.qda), caption = 'QDA: Direction prediction included in original test dataset')
+
+#confusion matrix
+knitr::kable(table(qda.class ,test$Direction), caption = 'QDA: Confusion Matrix')
+
+#overall error rate
+QDA=1-mean(qda.class == test$Direction)
+knitr::kable(QDA, caption = 'QDA: Overall error rate')
+
+#KNN1
+test.x=matrix(test$Lag2)
+training.x=matrix(training$Lag2)
+library(class)
+knn.pred=knn(training.x, test.x, training$Direction, k=1)
+prediction.knn=cbind(test,knn.pred)
+colnames(prediction.knn)[10]="Direction prediction"
+knitr::kable(head(prediction.knn), caption = 'KNN K=1: Direction prediction included in original test dataset')
+
+#confusion matrix
+knitr::kable(table(knn.pred ,test$Direction), caption = 'KNN K=1: Confusion matrix')
+
+#overall error rate
+KNN1=1-mean(knn.pred == test$Direction)
+knitr::kable(KNN1, caption = 'KNN K=1: Overall error rate')
+
+#KNN2
+test.x=matrix(test$Lag2)
+training.x=matrix(training$Lag2)
+library(class)
+knn.pred=knn(training.x, test.x, training$Direction, k=2)
+prediction.knn=cbind(test,knn.pred)
+colnames(prediction.knn)[10]="Direction prediction"
+
+#confusion matrix
+knitr::kable(table(knn.pred ,test$Direction), caption = 'KNN K=2: Confusion matrix')
+
+#overall error rate
+KNN2=1-mean(knn.pred == test$Direction)
+knitr::kable(KNN2, caption = 'KNN K=2: Overall error rate')
+
+#KNN3
+test.x=matrix(test$Lag2)
+training.x=matrix(training$Lag2)
+library(class)
+knn.pred=knn(training.x, test.x, training$Direction, k=3)
+prediction.knn=cbind(test,knn.pred)
+colnames(prediction.knn)[10]="Direction prediction"
+
+#confusion matrix
+knitr::kable(table(knn.pred ,test$Direction), caption = 'KNN K=3: Confusion matrix')
+
+#overall error rate
+KNN3=1-mean(knn.pred == test$Direction)
+knitr::kable(KNN3, caption = 'KNN K=3: Overall error rate')
+
+#KNN4
+test.x=matrix(test$Lag2)
+training.x=matrix(training$Lag2)
+library(class)
+knn.pred=knn(training.x, test.x, training$Direction, k=4)
+prediction.knn=cbind(test,knn.pred)
+colnames(prediction.knn)[10]="Direction prediction"
+
+#confusion matrix
+knitr::kable(table(knn.pred ,test$Direction), caption = 'KNN K=4: Confusion matrix')
+
+#overall error rate
+KNN4=1-mean(knn.pred == test$Direction)
+knitr::kable(KNN4, caption = 'KNN K=4: Overall error rate')
+
+#KNN5
+test.x=matrix(test$Lag2)
+training.x=matrix(training$Lag2)
+library(class)
+knn.pred=knn(training.x, test.x, training$Direction, k=5)
+prediction.knn=cbind(test,knn.pred)
+colnames(prediction.knn)[10]="Direction prediction"
+
+#confusion matrix
+knitr::kable(table(knn.pred ,test$Direction), caption = 'KNN K=5: Confusion matrix')
+
+#overall error rate
+KNN5=1-mean(knn.pred == test$Direction)
+knitr::kable(KNN5, caption = 'KNN K=5: Overall error rate')
+
+#KNN6
+test.x=matrix(test$Lag2)
+training.x=matrix(training$Lag2)
+library(class)
+knn.pred=knn(training.x, test.x, training$Direction, k=6)
+prediction.knn=cbind(test,knn.pred)
+colnames(prediction.knn)[10]="Direction prediction"
+
+#confusion matrix
+knitr::kable(table(knn.pred ,test$Direction), caption = 'KNN K=6: Confusion matrix')
+
+#overall error rate
+KNN6=1-mean(knn.pred == test$Direction)
+knitr::kable(KNN6, caption = 'KNN K=6: Overall error rate')
+
+#KNN10
+test.x=matrix(test$Lag2)
+training.x=matrix(training$Lag2)
+library(class)
+knn.pred=knn(training.x, test.x, training$Direction, k=10)
+prediction.knn=cbind(test,knn.pred)
+colnames(prediction.knn)[10]="Direction prediction"
+
+#confusion matrix
+knitr::kable(table(knn.pred ,test$Direction), caption = 'KNN K=10: Confusion matrix')
+
+#overall error rate
+KNN10=1-mean(knn.pred == test$Direction)
+knitr::kable(KNN10, caption = 'KNN K=10: Overall error rate')
+
+#KNN20
+test.x=matrix(test$Lag2)
+training.x=matrix(training$Lag2)
+library(class)
+knn.pred=knn(training.x, test.x, training$Direction, k=20)
+prediction.knn=cbind(test,knn.pred)
+colnames(prediction.knn)[10]="Direction prediction"
+
+#confusion matrix
+knitr::kable(table(knn.pred ,test$Direction), caption = 'KNN K=20: Confusion matrix')
+
+#overall error rate
+KNN20=1-mean(knn.pred == test$Direction)
+knitr::kable(KNN20, caption = 'KNN K=20: Overall error rate')
+
+#compare results
+comparison1=data.frame(Logistic,LDA,QDA,KNN1,
+                      KNN2)
+comparison2=data.frame(KNN3,KNN4,KNN5,
+                      KNN6,KNN10,KNN20)
+rownames(comparison1)<-'Overall error rate'
+rownames(comparison2)<-'Overall error rate'
+knitr::kable(comparison1, caption = 'Compare Overall error rate for different predictions methods: pt.1')
+knitr::kable(comparison2, caption = 'Compare Overall error rate for different predictions methods: pt.2')
+```
+
+
+Below are performed more classification methods, such as multiple logistic regression and multiple LDA. Experiment with different combinations of predictors are so performed.
+
+```{r cars3457}
+
+##Logistic regression: training data
+glm.fit=glm(Direction~Lag1+Lag2,data=training,family=binomial)
+summary(glm.fit)
+knitr::kable(confint(glm.fit), caption = 'Multiple logistic regression: confidence interval')
+
+#prediction and performance check: test data
+glm.probs=predict(glm.fit,newdata = test, type="response")
+glm.pred=rep("Down",dim(test)[1])
+glm.pred[glm.probs>0.5]="Up"
+prediction.glm=cbind(test,glm.pred)
+colnames(prediction.glm)[10]="Direction prediction"
+knitr::kable(head(prediction.glm), caption = 'multiple logistic: Direction prediction included in original test dataset')
+
+#confusion matrix
+knitr::kable(table(glm.pred,test$Direction), caption = 'multiple logistic: confusion matrix')
+
+#overall error rate
+knitr::kable(1-mean(glm.pred == test$Direction), caption = 'multiple logistic: overall error rate')
+
+
+##LDA
+library(MASS)
+lda.fit=lda(Direction~Lag1+Lag2,data=training)
+lda.fit
+plot(lda.fit)
+
+#prediction and performance check: test data
+lda.pred=predict(lda.fit,test)
+lda.class=lda.pred$class
+prediction.lda=cbind(test,lda.class)
+colnames(prediction.lda)[10]="Direction prediction"
+knitr::kable(head(prediction.lda), caption = 'multiple LDA: Direction prediction included in original test dataset')
+
+#confusion matrix
+knitr::kable(table(lda.class ,test$Direction), caption = 'multiple LDA: confusion matrix')
+
+#overall error rate
+LDA.overall.er=1-mean(lda.class == test$Direction)
+knitr::kable(LDA.overall.er, caption = 'multiple LDA: overall error rate')
+```
+
+
+**Problem 2**
+
+After downloading data from “Auto” file, and after creating a binary variable mpg01, the data has been explored graphically. Box-plots seem to show high differences between average weight, horsepower, displacement and cylinders in the two different level of mpg01 (miles per gas above the median (1) and below (0)). Scatterplots, instead, show a strong relationship between miles per gas and these quantitative variables. In cases like this, variables may be useful to explain the categorical variable. Therefore, they have been used to perform LDA, QDA, logistic regression and KNN. 
+
+The dataset has been divided into a training set and a test set for predictive modeling. LDA and QDA were employed to predict mpg01 on the training data, and the respective test errors were calculated. Logistic regression was also applied to predict mpg01 using the identified variables, and its test error was determined.
+
+Additionally, K-Nearest Neighbors (KNN) was implemented on the training data with varying values of K (1,2,3,4,5,6,10 and 20). Test errors were computed for each K, and the performance of different K values was compared to identify the most effective.
+
+Below the results.
+
+```{r cars2}
+
+#PROBLEM 2
+setwd('C:/Users/loaus/OneDrive - stevens.edu/STEVENS/Foundations of Financial Data Science/Assignment/Assignment3/HW3_data')
+data<-read.csv('Auto.csv')
+knitr::kable(head(data),caption = 'Dataset')
+
+#create a binary variable
+data$mpg01<-0
+data$mpg01[data$mpg>median(data$mpg)]<-1
+data$mpg01<-as.factor(data$mpg01)
+knitr::kable(summary(data),caption = 'Summary')
+
+par(mfrow = c(2, 3))
+plot1 <-ggplot(data=data, aes(y=cylinders,x= mpg01))+
+  geom_boxplot()+
+  ggtitle("Box Plot: Cylinders and mpg01")
+plot2 <- ggplot(data=data, aes(y=displacement,x= mpg01))+
+  geom_boxplot() +
+  ggtitle("Box Plot: displacement and mpg01")
+plot3 <- ggplot(data=data, aes(y=horsepower,x= mpg01))+
+  geom_boxplot() +
+  ggtitle("Box Plot: horsepower and mpg01")
+plot4 <- ggplot(data=data, aes(y=weight,x= mpg01))+
+  geom_boxplot() +
+  ggtitle("Box Plot: weight and mpg01")
+plot5 <- ggplot(data=data, aes(y=acceleration,x= mpg01))+
+  geom_boxplot() +
+  ggtitle("Box Plot: acceleration and mpg01")
+plot6 <- ggplot(data=data, aes(y=year,x= mpg01))+
+  geom_boxplot() +
+  ggtitle("Box Plot: year and mpg01")
+
+grid.arrange(plot1, plot2, plot3, plot4, plot5, plot6)
+
+par(mfrow = c(2, 2))
+plot1 <-ggplot(data=data, aes(y=mpg,x= cylinders))+
+  geom_point()+
+  ggtitle("Scatter Plot: Cylinders and mpg01")
+plot2 <-ggplot(data=data, aes(y=mpg,x= displacement))+
+  geom_point() +
+  ggtitle("Scatter Plot: displacement and mpg01")
+plot3 <- ggplot(data=data, aes(y=mpg,x= horsepower))+
+  geom_point() +
+  ggtitle("Scatter Plot: horsepower and mpg01")
+plot4 <- ggplot(data=data, aes(y=mpg,x= weight))+geom_point() +
+  ggtitle("Scatter Plot: weight and mpg01")
+
+grid.arrange(plot1, plot2, plot3, plot4)
+
+#splitting dataset in training and test data
+training<-data[1:250,]
+test<-data[251:392,]
+test$mpg01<-as.factor(test$mpg01)
+training$mpg01<-as.factor(training$mpg01)
+
+#Logistic regression: training data
+glm.mpg01=glm(mpg01~cylinders+weight+horsepower+displacement,data=training,family=binomial)
+summary(glm.mpg01)
+knitr::kable(confint(glm.mpg01), caption = 'Logistic regression: confidence interval')
+
+#predicted values and performance check:test data
+glm.probs=predict(glm.mpg01,newdata = test, type="response")
+glm.pred=rep("0",dim(test)[1])
+glm.pred[glm.probs>0.5]="1"
+prediction.glm=cbind(test,glm.pred)
+colnames(prediction.glm)[11]="mpg01 prediction"
+knitr::kable(head(prediction.glm), caption= 'mpg01 prediction included in original test dataset')
+
+#confusion matrix
+knitr::kable(table(glm.pred,test$mpg01), caption = 'Confusion matrix: test data (logistic)')
+
+#overall error rate
+knitr::kable(1-mean(glm.pred == test$mpg01), caption = 'Overall error rate on test data (logistic)')
+
+##LDA
+library(MASS)
+lda.fit=lda(mpg01~cylinders+weight+horsepower+displacement,data=training)
+lda.fit
+plot(lda.fit)
+
+#prediction and performance check: test data
+lda.pred=predict(lda.fit,test)
+lda.class=lda.pred$class
+prediction.lda=cbind(test,lda.class)
+colnames(prediction.lda)[11]="mpg01 prediction"
+knitr::kable(head(prediction.lda), caption = 'LDA: mpg01 prediction included in original test dataset')
+
+#confusion matrix
+knitr::kable(table(lda.class ,test$mpg01), caption = 'LDA: Confusion Matrix')
+
+#overall error rate
+knitr::kable(1-mean(lda.class == test$mpg01), caption = 'Overall Error rate: LDA')
+
+#QDA
+qda.fit=qda(mpg01~cylinders+weight+horsepower+displacement,data=training)
+qda.fit
+
+#prediction and performance check: test data
+qda.pred=predict(qda.fit,test)
+qda.class=qda.pred$class
+prediction.qda=cbind(test,qda.class)
+colnames(prediction.qda)[11]="mpg01 prediction"
+knitr::kable(head(prediction.qda), caption = 'QDA: mpg01 prediction included in original test dataset')
+
+#confusion matrix
+knitr::kable(table(qda.class ,test$mpg01), caption = 'QDA: Confusion Matrix')
+
+#overall error rate
+knitr::kable(1-mean(qda.class == test$mpg01), caption = 'Overall Error rate: QDA')
+
+#KNN K=1
+test.x=cbind(test$cylinders,test$weight,test$horsepower,test$displacement)
+training.x=cbind(training$cylinders,training$weight,training$horsepower,training$displacement)
+library(class)
+knn.pred=knn(training.x, test.x, training$mpg01, k=1)
+prediction.knn=cbind(test,knn.pred)
+colnames(prediction.knn)[11]="mpg01 prediction"
+knitr::kable(head(prediction.knn), caption = 'KNN K=1: mpg01 prediction included in original test dataset')
+
+#confusion matrix
+knitr::kable(table(knn.pred ,test$mpg01), caption = 'KNN K=1: Confusion matrix')
+
+#overall error rate
+KNN1=1-mean(knn.pred == test$mpg01)
+
+
+#KNN K=2
+test.x=cbind(test$cylinders,test$weight,test$horsepower,test$displacement)
+training.x=cbind(training$cylinders,training$weight,training$horsepower,training$displacement)
+library(class)
+knn.pred=knn(training.x, test.x, training$mpg01, k=2)
+prediction.knn=cbind(test,knn.pred)
+colnames(prediction.knn)[11]="mpg01 prediction"
+
+#confusion matrix
+knitr::kable(table(knn.pred ,test$mpg01), caption = 'KNN K=2: Confusion matrix')
+
+#overall error rate
+KNN2=1-mean(knn.pred == test$mpg01)
+
+#KNN K=3
+test.x=cbind(test$cylinders,test$weight,test$horsepower,test$displacement)
+training.x=cbind(training$cylinders,training$weight,training$horsepower,training$displacement)
+library(class)
+knn.pred=knn(training.x, test.x, training$mpg01, k=3)
+prediction.knn=cbind(test,knn.pred)
+colnames(prediction.knn)[11]="mpg01 prediction"
+
+#confusion matrix
+knitr::kable(table(knn.pred ,test$mpg01), caption = 'KNN K=3: Confusion matrix')
+
+#overall error rate
+KNN3=1-mean(knn.pred == test$mpg01)
+
+#KNN K=4
+test.x=cbind(test$cylinders,test$weight,test$horsepower,test$displacement)
+training.x=cbind(training$cylinders,training$weight,training$horsepower,training$displacement)
+library(class)
+knn.pred=knn(training.x, test.x, training$mpg01, k=4)
+prediction.knn=cbind(test,knn.pred)
+colnames(prediction.knn)[11]="mpg01 prediction"
+
+#confusion matrix
+knitr::kable(table(knn.pred ,test$mpg01), caption = 'KNN K=4: Confusion matrix')
+
+#overall error rate
+KNN4=1-mean(knn.pred == test$mpg01)
+
+#KNN K=5
+test.x=cbind(test$cylinders,test$weight,test$horsepower,test$displacement)
+training.x=cbind(training$cylinders,training$weight,training$horsepower,training$displacement)
+library(class)
+knn.pred=knn(training.x, test.x, training$mpg01, k=5)
+prediction.knn=cbind(test,knn.pred)
+colnames(prediction.knn)[11]="mpg01 prediction"
+
+#confusion matrix
+knitr::kable(table(knn.pred ,test$mpg01), caption = 'KNN K=5: Confusion matrix')
+
+#overall error rate
+KNN5=1-mean(knn.pred == test$mpg01)
+
+#KNN K=6
+test.x=cbind(test$cylinders,test$weight,test$horsepower,test$displacement)
+training.x=cbind(training$cylinders,training$weight,training$horsepower,training$displacement)
+library(class)
+knn.pred=knn(training.x, test.x, training$mpg01, k=6)
+prediction.knn=cbind(test,knn.pred)
+colnames(prediction.knn)[11]="mpg01 prediction"
+
+#confusion matrix
+knitr::kable(table(knn.pred ,test$mpg01), caption = 'KNN K=6: Confusion matrix')
+
+#overall error rate
+KNN6=1-mean(knn.pred == test$mpg01)
+
+#KNN K=10
+test.x=cbind(test$cylinders,test$weight,test$horsepower,test$displacement)
+training.x=cbind(training$cylinders,training$weight,training$horsepower,training$displacement)
+library(class)
+knn.pred=knn(training.x, test.x, training$mpg01, k=10)
+prediction.knn=cbind(test,knn.pred)
+colnames(prediction.knn)[11]="mpg01 prediction"
+
+#confusion matrix
+knitr::kable(table(knn.pred ,test$mpg01), caption = 'KNN K=10: Confusion matrix')
+
+#overall error rate
+KNN10=1-mean(knn.pred == test$mpg01)
+
+#KNN K=20
+test.x=cbind(test$cylinders,test$weight,test$horsepower,test$displacement)
+training.x=cbind(training$cylinders,training$weight,training$horsepower,training$displacement)
+library(class)
+knn.pred=knn(training.x, test.x, training$mpg01, k=20)
+prediction.knn=cbind(test,knn.pred)
+colnames(prediction.knn)[11]="mpg01 prediction"
+
+#confusion matrix
+knitr::kable(table(knn.pred ,test$mpg01), caption = 'KNN K=20: Confusion matrix')
+
+#overall error rate
+KNN20=1-mean(knn.pred == test$mpg01)
+
+#compare results
+knitr::kable(data.frame(KNN1, KNN2, KNN3, KNN4, KNN5, KNN6,KNN10,KNN20,row.names='Overall error rate'), caption = 'KNN: Compare Overall error rate for different value of K')
+```
+
+The logistic regression shows that there is a negative relationship between all of these variables and the probability of mpg above the median (mpg01=1). 
+The more the cylinders, the lower the probability of mpg01 qual to 1 (lower miles per gas). 
+The more the horsepower, the lower the probability of mpg01 qual to 1 (lower miles per gas).
+The higher the weight, the lower the probability of mpg01 qual to 1 (lower miles per gas). 
+The higher the displacement, the lower the probability of mpg01 qual to 1  (lower miles per gas).
+However, cylinders and displacement are not statistically significant.
+
+The examination of classification methods on the test data unveils varying overall error rates. Logistic regression and Linear Discriminant Analysis (LDA) achieved overall error rates of approximately 23,94% and 12.68%, respectively, demonstrating LDA's  superior accuracy. Quadratic Discriminant Analysis (QDA) exhibited a marginally higher overall error rate of around 16.20%. Notably, K-Nearest Neighbors (KNN) displayed a consistent overall error rate of about 20% from KNN1 to KNN3, then experienced a decrease to 1760% for KNN5 (lowest among KNN). This change may be attributed to the optimal balance between bias and variance in the model. The lower error rates of LDA compared to QDA may be attributed to the assumption of equal covariance matrices in QDA, making it more sensitive to variations in the data. LDA, with fewer assumptions, thus demonstrated superior performance in this particular analysis.
