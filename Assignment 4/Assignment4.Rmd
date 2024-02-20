@@ -1,0 +1,242 @@
+---
+title: "Assignment 4"
+author: "Lorenzo Ausiello"
+date: "2023-11-28"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = F)
+```
+
+
+**PROBLEM 1**
+
+The dataset analysed for the problem 1 is OJ dataset, The dataset contains 1070 purchases where the customer either purchased Citrus Hill or Minute Maid Orange Juice. A number of characteristics of the customer and product are recorded.
+
+In this analysis, the dataset is divided into a training set with 800 random observations and a test set containing the remaining observations. A decision tree is then fitted to the training data with "Purchase" (a factor with levels CH and MM indicating whether the customer purchased Citrus Hill or Minute Maid Orange Juice) as the response and other variables as predictors.
+
+The classification tree built on the training subset incorporates two key variables, "LoyalCH" and "PriceDiff," resulting in a tree with 8 terminal nodes. The model's fit is summarized with a residual mean deviance of 0.7625 and a training misclassification error rate of 16.5%. This suggests a reasonably effective predictive performance on the training data. However, 9,24% of true CH are misclassified and 27,29% of true MM are misclassified. Picking one of the terminal nodes as example, the tree in the figure shows that when LoyalCH (loyalty to the brand CH) is greater than 0.5036 but PriceDiff (Sale price of MM less sale price of CH) is lower than 0.39, the Purchase prediction is MM (meaning, in that region the are more MM observations).
+
+In the decision tree, specific rules for predicting purchase outcomes can be derived from the splits. For instance, when customer loyalty ("LoyalCH") is less than 0.5036 (but more than 0.2761)  and "PriceDiff" exceeds 0.05, the prediction is CH. This implies that in scenarios where customers exhibit lower loyalty but face a higher price differential in favor of CH stores, the model predicts a CH store preference. These interpretable rules provide valuable insights into the nuanced interplay between loyalty, price differentials, and purchasing decisions, facilitating a targeted understanding of customer behavior within the context of the given predictors.
+
+A visual representation of the tree is created using a plot, facilitating a more intuitive understanding of the decision-making process.
+
+The model's performance is assessed on the test set by predicting responses and generating a confusion matrix, allowing computation of the test error rate. The confusion matrix for the test data reveals that out of 270 observations, 150 were correctly classified as CH, 70 as MM, while 34 MM and 16 CH observations were misclassified. The overall error rate, calculated as the sum of misclassifications divided by the total observations, is 18.52%. This indicates that the model accurately predicted the response for approximately 81.48% of the test data. Specifically, the model demonstrated good accuracy in identifying CH observations but had a slightly higher error rate in predicting MM.
+
+Cross-validation is employed using the cv.tree() function on the training set to identify the optimal tree size, and a plot is generated with tree size on the x-axis and cross-validated classification error rate on the y-axis, aiding in the selection of an appropriately sized tree for better generalization performance. Cross-validation suggests that the optimal tree size is 5 nodes, minimizing classification error. The sequence of sizes is 8, 5, 3, 2, and 1. Notably, transitioning from 1 to 2 nodes and further increases in size leads to a reduction in cross-validated error. However, the decline in error is most pronounced between 1 and 2 nodes. This highlights the trade-off between model complexity and accuracy, indicating that a more elaborate tree beyond 2 nodes may not significantly enhance predictive performance. Hence, selecting a moderately complex tree, such as the one with 8 nodes, strikes a balance between interpretability and accuracy.
+
+```{r cars}
+##Problem 1
+  
+#store data in a variable
+setwd('C:/Users/loaus/OneDrive - stevens.edu/STEVENS/Foundations of Financial Data Science/Assignment/Assignment4/HW4_data')
+dataset <- read.csv('OJ.csv')
+
+#split dataset in a training dataset and a test dataset (randomly)
+dataset$Purchase <- as.factor(dataset$Purchase)
+set.seed(123)
+train <- sample(1:nrow(dataset),800)
+training <- dataset[train,]
+test <- dataset[-train,]
+
+#fit a tree
+library(tree)
+tree.purchase = tree(Purchase~., dataset, subset = train)
+summary(tree.purchase)
+{plot(tree.purchase)
+text(tree.purchase,pretty=0)}
+tree.purchase
+
+#training error rate
+tree.pred=predict(tree.purchase,training,type="class")
+knitr::kable(table(tree.pred,training$Purchase), caption = "Confusion matrix: training data")
+knitr::kable(1-mean(tree.pred == training$Purchase), caption = "Overall error rate: training data")
+
+#test error rate
+tree.pred=predict(tree.purchase,test,type="class")
+knitr::kable(table(tree.pred,test$Purchase), caption = "Confusion matrix: test data")
+knitr::kable(1-mean(tree.pred == test$Purchase), caption = "Overall error rate: test data")
+
+#cv to determine optimal tree
+cv.purchase=cv.tree(tree.purchase,FUN=prune.misclass)
+cv.purchase
+par(mfrow=c(1,2))
+plot(cv.purchase$size,cv.purchase$dev,type="b")
+plot(cv.purchase$k,cv.purchase$dev,type="b")
+par(mfrow=c(1,2))
+plot(cv.purchase$size,cv.purchase$dev/800,type="b")
+plot(cv.purchase$k,cv.purchase$dev/800,type="b")
+prune.purchase=prune.misclass(tree.purchase,best=5)
+{plot(prune.purchase)
+text(prune.purchase,pretty=0)}
+tree.pred=predict(prune.purchase,test,type="class")
+knitr::kable(table(tree.pred,test$Purchase), caption = "Confusion matrix: test data with best=5")
+knitr::kable(1-mean(tree.pred == test$Purchase), caption = "Overall error rate: test data with best=5")
+```
+
+
+**PROBLEM 2**
+
+A boosting model was fitted to the training set with the response variable "Purchase" and 85 predictors. The model used 1,000 trees and a shrinkage value of 0.01. The boosting model identified 47 predictors with non-zero influence. The top predictors, ranked by relative influence, include PPERSAUT (17.65%), MAUT2 (8.68%), ALEVEN (7.13%), MBERMIDD (5.81%), and MINKGEM (4.96%).
+The error rate for the test data at the 20% threshold is approximately 8.38%. 40 people out of 188 predicted make one purchase. However, only 40 out of 296 that make at least one purchase are correctly classified.
+Logistic regression was applied to the training set, and the resulting model coefficients are presented. The logistic model identified predictors with associated coefficients, along with their standard errors and p-values.The error rate for the logistic model on the test data at the 20% threshold is approximately 11.68%.
+K-nearest neighbors (KNN) algorithm was applied to the data with a 20% threshold for predicted probabilities. The error rate for the KNN model on the test data at the 20% threshold is approximately 7.49%.
+The boosting model identified important predictors for predicting purchases, with PPERSAUT, MAUT2, and ALEVEN being the most influential.
+The boosting model's error rate is comparable to KNN and lower than logistic regression at the 20% threshold.
+```{r cars2}
+##Problem 2
+
+#store data in a variable
+setwd('C:/Users/loaus/OneDrive - stevens.edu/STEVENS/Foundations of Financial Data Science/Assignment/Assignment4/HW4_data')
+dataset <- read.csv('CARAVAN.csv')
+
+#split dataset in a training dataset and a test dataset (randomly)
+dataset$Purchase <- as.factor(dataset$Purchase)
+Purchase<-rep(0,5822)
+Purchase[dataset$Purchase=='Yes'] <- 1
+dataset$Purchase <- Purchase
+set.seed(1)
+train <- sample(1:nrow(dataset),1000)
+training <- dataset[train,]
+test <- dataset[-train,]
+
+#fit a boosting model
+library(gbm)
+boost=gbm(Purchase~.,data=training,distribution="bernoulli",n.trees=1000,shrinkage=0.01,verbose=F)
+boost
+head(summary(boost), 10)
+
+par(mfrow=c(1,2))
+plot(boost,i="PPERSAUT")
+plot(boost,i="MAUT2")
+
+#predictions
+yhat.boost=predict(boost,newdata=test,n.trees=1000)
+gbm.probs<-plogis(yhat.boost)
+
+gbm.pred=rep("0",dim(test)[1])
+gbm.pred[gbm.probs>0.2]="1"
+
+#confusion matrix
+knitr::kable(table(gbm.pred,test$Purchase), caption = "Confusion matrix: test data, treshold=0.2")
+
+#overall error rate
+knitr::kable(1-mean(gbm.pred == test$Purchase), caption = "Error rate: test data, treshold=0.2")
+
+
+##Logistic regression
+glm=glm(Purchase~.,data=training,family=binomial)
+summary(glm)
+
+#predicted values and performance check
+glm.probs=predict(glm,newdata = test, type="response")
+glm.pred=rep("0",dim(test)[1])
+glm.pred[glm.probs>0.2]="1"
+
+#confusion matrix
+knitr::kable(table(glm.pred,test$Purchase), caption = "Logistic Confusion matrix: test data, treshold=0.2")
+
+#overall error rate
+knitr::kable(1-mean(glm.pred == test$Purchase), caption = "Logistic Error rate: test data, treshold=0.2")
+
+#KNN20
+test.x=as.matrix(test[,1:85])
+training.x=as.matrix(training[,1:85])
+library(class)
+knn.model=knn(training.x, test.x, training$Purchase, k=20, prob=TRUE)
+knn.probs=attr(knn.model, "prob")
+knn.pred=rep("0",dim(test)[1])
+knn.pred[knn.probs<0.8]="1"
+
+#confusion matrix
+knitr::kable(table(knn.pred ,test$Purchase), caption = "Knn Confusion matrix: test data, treshold=0.2")
+
+#overall error rate
+knitr::kable(1-mean(knn.pred == test$Purchase), caption = "Knn Error rate: test data, treshold=0.2")
+```
+
+
+**PROBLEM 3**
+
+A simulated dataset with 60 observations (20 in each of three classes) and 50 variables was generated. A mean shift was added to create three distinct classes.
+PCA was performed on the simulated data. The first two principal component score vectors were plotted, with different colors indicating observations in each of the three classes.
+K-means clustering was applied to the original data with K = 3.
+The clusters obtained were compared with the true class labels using a confusion matrix.
+Results indicate perfect clustering, with each class correctly identified by K-means.
+Then, K-means clustering was performed with K = 2 and K = 4.
+K-means clustering was applied to the first two principal component score vectors.
+The clustering results were compared with true class labels. Results indicate perfect clustering.
+K-means clustering was performed on the data after scaling each variable to have standard deviation one.
+The clustering results were compared with true class labels using a confusion matrix.
+Results indicate perfect clustering, aligning with the true class labels.
+
+The first two principal component score vectors were crucial for clear class separation in the PCA analysis.
+K-means clustering on the original data, on the first two PC and on scaled variables resulted in perfect clustering when K = 3, suggesting strong separation between the classes.
+The analysis demonstrates the effectiveness of PCA in capturing the most relevant information for clustering and the impact of scaling on K-means clustering results. The ideal choice of K may vary based on the dataset and the nature of the classes.
+```{r cars3}
+##Problem 3
+
+#Generate a simulated dataset
+set.seed(123)
+num_obs <- 20
+num_vars <- 50
+
+class_1 <- matrix(rnorm(num_obs * num_vars, mean = 0, sd = 1), nrow = num_obs, ncol = num_vars)
+class_2 <- matrix(rnorm(num_obs * num_vars, mean = 1, sd = 1), nrow = num_obs, ncol = num_vars)
+class_3 <- matrix(rnorm(num_obs * num_vars, mean = 2, sd = 1), nrow = num_obs, ncol = num_vars)
+
+dataset <- rbind(class_1, class_2, class_3)
+
+dataset <- as.data.frame(dataset)
+
+#Perform PCA
+pr.out=prcomp(dataset, scale=TRUE)
+knitr::kable(head(pr.out$rotation[,1:6]), caption = "PC: 6 out of 86")
+par(mfrow=c(1,1))
+biplot(pr.out, scale=0)
+
+#plot with different colors for different classes
+class_colors <- c("red", "blue", "green")
+plot(pr.out$x[, 1], pr.out$x[, 2], col = rep(class_colors, each = num_obs), pch = 16, xlab = "PC1", ylab = "PC2")
+arrows(0, 0, pr.out$rotation[, 1], pr.out$rotation[, 2], angle = 20, length = 0.1, col = "black")
+legend("topright", legend = c("Class 1", "Class 2", "Class 3"), fill = class_colors)
+
+knitr::kable(head(pr.out$sdev,6), caption = "Standard deviation of the first 6 PC")
+pr.var=pr.out$sdev^2
+knitr::kable(head(pr.var,6), caption = "Variance of the first 6 PC")
+pve=pr.var/sum(pr.var)
+plot(pve, xlab="Principal Component", ylab="Proportion of Variance Explained", ylim=c(0,1),type='b')
+plot(cumsum(pve), xlab="Principal Component", ylab="Cumulative Proportion of Variance Explained", ylim=c(0,1),type='b')
+
+# K-Means Clustering
+km.out=kmeans(dataset,3,nstart=20)
+knitr::kable(matrix(km.out$cluster, nrow=3), caption = "K-Means Clustering, k=3")
+true.cluster = c(rep(3,20),rep(2,20),rep(1,20))
+knitr::kable(table(km.out$cluster,true.cluster), caption = "Class predicted vs True classes")
+knitr::kable(km.out$tot.withinss, caption = "TOT Withinss")
+
+km.out=kmeans(dataset,2,nstart=20)
+knitr::kable(matrix(km.out$cluster, nrow=3), caption = "K-Means Clustering, k=2")
+knitr::kable(km.out$tot.withinss, caption = "TOT Withinss")
+
+km.out=kmeans(dataset,4,nstart=20)
+knitr::kable(matrix(km.out$cluster, nrow=3), caption = "K-Means Clustering, k=4")
+knitr::kable(km.out$tot.withinss, caption = "TOT Withinss")
+
+x <- as.matrix(pr.out$rotation[,c('PC1','PC2')])
+dataset2 <- as.matrix(dataset)%*%x
+dataset2 <- data.frame(dataset2)
+
+km.out=kmeans(dataset2,3,nstart=20)
+knitr::kable(matrix(km.out$cluster, nrow=3), caption = "K-Means Clustering on the first two PC, k=3")
+true.cluster = c(rep(3,20),rep(1,20),rep(2,20))
+knitr::kable(table(km.out$cluster,true.cluster), caption = "Class predicted vs True classes")
+knitr::kable(km.out$tot.withinss, caption = "TOT Withinss")
+
+km.out=kmeans(scale(dataset),3,nstart=20)
+knitr::kable(matrix(km.out$cluster, nrow=3), caption = "K-Means Clustering on scaled variable, k=3")
+true.cluster = c(rep(1,20),rep(3,20),rep(2,20))
+knitr::kable(table(km.out$cluster,true.cluster), caption = "Class predicted vs True classes")
+knitr::kable(km.out$tot.withinss, caption = "TOT Withinss")
+```
