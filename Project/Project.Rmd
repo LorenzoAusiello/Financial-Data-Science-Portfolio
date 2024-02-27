@@ -1,0 +1,1082 @@
+---
+title: How ESG impact on financial performance? Optimizing ESG efforts and what to
+  focus on
+author: "Lorenzo Ausiello, Fabrizio Dimino, Samuele Mugnai, Bo Sun"
+date: "FA-582 Project, FALL 2023"
+output:
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, out.width="100%",out.height="100%")
+library(quantmod)
+library(openxlsx)
+library(reshape2)
+library(doBy)
+library(ggplot2)
+library(gridExtra)
+library(MASS)
+library(dplyr)
+library(magick)
+library(cowplot)
+library('car')
+library(randomForest)
+library(factoextra)
+library(psych)
+```
+
+
+
+
+**Abstract**
+This report presents an in-depth analysis of the S&P 500 companies, scrutinizing their Environmental, Social, and Governance (ESG) scores alongside financial performance and market trends spanning two decades (2002-2022). The study is anchored in exploring the complex interplay between corporate sustainability initiatives, their financial outcomes, and the broader market movements. This exploration is pivotal in elucidating how ESG practices are intertwined with economic returns and market behaviors, offering valuable insights for shaping future investment strategies and reinforcing corporate sustainability frameworks. The culmination of this research promises to be a critical resource for investors and corporations alike, guiding them towards more informed decisions that align with both financial goals and sustainability commitments.
+
+\newpage
+## Introduction
+
+This report offers an analysis of companies listed in the S&P500 index, focusing on their ESG scores, financial performance, and market data collected from 2002 to 2022. The insights gleaned from this analysis could significantly enhance our understanding of the intricate relationship between sustainability, financial returns, and market behavior. This, in turn, can greatly influence future investment decisions and corporate sustainability strategies.
+
+## Analysis Objective
+The primary goal here is to uncover correlations or connections between ESG scores, financial/economic performances, and market data, particularly stock prices. This investigation aims to discern meaningful associations between corporate sustainability practices, financial performance, and the behavior of the stock market.
+
+## Data Source and Reference Period
+
+ESG (Environmental, Social, Governance) scores utilized in this study were sourced from the Refinitiv V2 Score database released in May 2023. This database provides quarterly updated annual scores spanning from 2002 to 2022.
+
+Historical stock prices of selected companies were acquired using the quantmod library. Subsequently, logarithmic returns were computed from this data to assess the percentage changes in stock prices over time. This step significantly contributes to comprehending the dynamics of companies' financial returns during the considered period.
+
+Additional pertinent financial data, including Return on Equity (ROE) and Return on Assets (ROA), were retrieved from the Bloomberg terminal. These financial metrics offer crucial insights into companies' profitability and asset utilization efficiency during the analyzed period.
+
+All collected data was meticulously organized and integrated to construct a cohesive dataset. This unified dataset comprises information on ESG scores, corresponding logarithmic returns, and financial indicators like ROE and ROA. This integration allows for a holistic and in-depth analysis of companies' performances within the spheres of sustainability and financial resilience.
+
+
+## Dataset
+
+The dataframe containing the data used for the entire project consists of a total of 21 columns and 1448 rows. Each of the data points has been meticulously selected and downloaded from various data warehouses, including "Wharton Research Data Services," "Bloomberg Terminal," and "Yahoo Finance. "To provide an optimal analysis regarding the meaning of each data type, it is necessary to develop an accurate description of each column in the dataframe:
+
+  •	Year: We have selected the data from 2002 to 2022. This specific selection has allowed us     to obtain a robust and meaningful dataset for the following analysis.
+  
+  •	Primary.Ticker: This column identifies the ticker of each of the companies selected for the study. Specifically, this nickname represents the acronym by which the company is displayed within the used terminal. Totally, we have picked 67 firms. 
+  
+  •	Community.Score: A score indicating the company's performance in community-related aspects. Higher scores generally imply better performance in community-related initiatives.
+  
+  •	CSR.Strategy.Score: This score evaluates the company's commitment to Corporate Social Responsibility (CSR) strategies. It measures how actively the company engages in socially responsible practices. A higher score indicates a more robust CSR strategy, showcasing a strong commitment to social responsibility.
+  
+  •	Emissions.Score: This score assesses the effectiveness of the company's efforts in reducing emissions. It reflects the company's commitment to environmental sustainability. Higher scores indicate that the company has implemented more effective measures to reduce its carbon footprint.
+  
+  •	Environment.Pillar.Score: The "Environment" pillar score, integral to the Environmental, Social, and Governance (ESG) framework, gauges a company's commitment to sustainable and ethical practices. It assesses how effectively a company addresses environmental concerns through various components.
+  
+  •	Environment. Innovation.Score: The Environmental Innovation Score assesses a company's level of innovation in implementing environmentally friendly practices and processes. he score aims to measure how well a company incorporates innovative and eco-friendly technologies, business processes, and approaches to minimize its ecological footprint.
+  
+  •	ESG.Combined.Score: The ESG Combined Score is an aggregated or composite score that represents a company's overall performance across Environmental, Social, and Governance (ESG) factors. ESG factors are used to evaluate a company's sustainability, ethical practices, and its impact on the broader world.
+  
+  •	ESG.Controversies.Score: The ESG Controversies Score is a metric that assesses the level of controversy associated with a company regarding its Environmental, Social, and Governance (ESG) practices. This score is an indicator of the degree to which a company is involved in or associated with controversial events or issues that may have negative social or environmental implications.
+  
+  •	Governance.Score: The Governance Score is a metric that assesses a company's governance practices within the context of Environmental, Social, and Governance (ESG) criteria. Governance refers to the systems and processes by which companies are directed, controlled, and held accountable to their stakeholders.
+  
+  •	Human.Rights.Score: The Human Rights Score is a metric that assesses a company's commitment to and performance in protecting and promoting human rights within the framework of Environmental, Social, and Governance (ESG) criteria. Human rights encompass a broad range of fundamental rights and freedoms inherent to all individuals, regardless of nationality, ethnicity, gender, religion, or other characteristics.
+  
+  •	Management.Score: The Management Score is a metric used in Environmental, Social, and Governance (ESG) assessments to evaluate the quality of a company's management practices. It provides insights into how well a company is governed and managed, which can be indicative of its long-term sustainability and overall performance.
+  
+  •	Product.Responsability.Score: The Product Responsibility Score is a metric within Environmental, Social, and Governance (ESG) assessments that evaluates a company's responsibility in the production of goods. This score reflects how well a company manages and addresses the potential social and environmental impacts associated with its products throughout their lifecycle.
+  
+  •	Resource.Use.Score: The Resource Use Score is a metric within Environmental, Social, and Governance (ESG) assessments that evaluates a company's efficiency in utilizing and managing natural resources. This score provides insights into how well a company optimizes and handles resources such as water, energy, and raw materials.
+  
+  •	Shareholders.Score: The ShareholdersScore is a metric within Environmental, Social, and Governance (ESG) assessments that evaluates a company's performance in shareholder-related aspects. It provides insights into how well a company manages relationships with its shareholders and addresses their interests.
+  
+  •	Social.Score: The "SocialScore" is a metric within Environmental, Social, and Governance (ESG) assessments, providing an overall evaluation of a company's performance in various social responsibility aspects. This score is crucial for investors and stakeholders interested in understanding how a company manages its social impact and interacts with the broader community.
+  
+  •	Workforce.Score: The term "Workforce.Score" is not a standard or widely recognized metric in the context of Environmental, Social, and Governance (ESG) assessments. However, it implies an evaluation of a company's performance related to its workforce, considering various factors that contribute to a positive and sustainable work environment.
+  
+  •	Returns: Historical stock prices of selected companies were acquired using the quantmod library. Subsequently, logarithmic returns were computed from this data to assess the percentage changes in stock prices over time. This step significantly contributes to comprehending the dynamics of companies' financial returns during the considered period.
+  
+  •	ROA (Return on Assets): ROA" stands for Return on Assets, and it is a financial metric that measures a company's efficiency in using its assets to generate profit. Its components are represented by Net Income and Average Total Assets. 
+  
+  •	ROE (Return on Equity): ROE" stands for Return on Equity, and it is a financial metric that measures the profitability of a company in relation to its shareholders' equity. Its components are represented by Net Income and Average Shareholders' Equity.
+Initially, we focused on core variables such as ESG score, ESG combined score, ESG controversies score, environmental pillar score, governance score, and social score for analysis, later integrating other variables into regression models.
+
+## Methods
+
+EDA, Multiple linear regression, Random forest
+
+
+```{r cars1, warning=FALSE}
+#store data in one variable
+#setwd('D:/FDS/Project/')
+setwd('C:/Users/loaus/OneDrive - stevens.edu/STEVENS/Foundations of Financial Data Science/Project')
+Dataset <- read.csv('Dataset.csv',sep = ";")
+
+#remove missing values
+Dataset <- na.omit(Dataset)
+
+#remove 2023 
+#Dataset <- Dataset[-which(Dataset$Year==2023),]
+
+#company from 2002 to 2022
+tick_comm <- Dataset$Primary.Ticker[Dataset$Year == 2022]
+for (year in seq(2002, 2021, 1)) {
+    tick_year <- Dataset$Primary.Ticker[Dataset$Year == year]
+    tick_comm <- intersect(tick_comm, tick_year)
+}
+
+Dataset <- Dataset[Dataset$Primary.Ticker %in% tick_comm, ]
+
+#Keep only numeric an only catgorical
+Dataset2 <-Dataset[,1:18]
+Dataset <- Dataset[,-c(3:18)]
+
+#compute returns
+start_date <- "2001-12-31"
+end_date <- "2022-12-31"
+get_tic_function <- function(x) get(getSymbols(x, from = start_date, to = end_date ))
+prices <- lapply(tick_comm,get_tic_function)
+prices <- lapply(prices, to.yearly)
+prices <- lapply(prices, function(x) x[,6])
+prices <- Reduce(merge, prices)
+colnames(prices) <- tick_comm
+returns <- na.omit(log(prices/lag(prices)))
+
+#ratios
+
+path <- "C:/Users/loaus/OneDrive - stevens.edu/STEVENS/Foundations of Financial Data Science/Project/Ratios.xlsx"
+
+ROE <- read.xlsx(path, 1, rowNames=TRUE)
+ROA <- read.xlsx(path, 2, rowNames=TRUE)
+rownames(ROE) <-gsub(" UW Equity| UN Equity", "", rownames(ROE))
+rownames(ROA) <-gsub(" UW Equity| UN Equity", "", rownames(ROA))
+ROE <-ROE[tick_comm,]
+ROA <-ROA[tick_comm,]
+ROE <- as.matrix(ROE)
+ROE<-t(ROE)
+ROE <- as.vector(ROE)
+ROA <- as.matrix(ROA)
+ROA<-t(ROA)
+ROA <- as.vector(ROA)
+ROA <- as.numeric(ROA)
+ROE <- as.numeric(ROE)
+
+#order for ticker
+Dataset <- Dataset[order(Dataset$Primary.Ticker), ]
+Dataset2 <- Dataset2[order(Dataset2$Primary.Ticker), ]
+
+#merge returns and ESG scores
+returns <- data.frame(returns)
+rownames(returns) <- seq(2002,2022,1)
+
+
+returns <- melt(returns)
+
+
+Dataset <- cbind(Dataset, 'returns' = returns$value, 'ROA'= ROA, 'ROE'= ROE)
+Dataset2 <- cbind(Dataset2, 'returns' = returns$value, 'ROA'= ROA, 'ROE'= ROE)
+
+#exploratory data analysis
+
+####CATEGORICAL
+lev <- c("A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D+", "D", "D-")
+Dataset2$ESG.SCORE.Value<-factor(Dataset2$ESG.SCORE.Value, levels=lev)
+Dataset2$ESG.COMBINED.SCORE.Value<-factor(Dataset2$ESG.COMBINED.SCORE.Value, levels=lev)
+Dataset2$ESG.CONTROVERSIES.SCORE.Value<-factor(Dataset2$ESG.CONTROVERSIES.SCORE.Value, levels=lev)
+Dataset2$ENVIRONMENT.PILLAR.SCORE.Value<-factor(Dataset2$ENVIRONMENT.PILLAR.SCORE.Value, levels=lev)
+Dataset2$GOVERNANCE.SCORE.Value<-factor(Dataset2$GOVERNANCE.SCORE.Value, levels=lev)
+Dataset2$SOCIAL.SCORE.Value<-factor(Dataset2$SOCIAL.SCORE.Value, levels=lev)
+```
+\newpage
+# HOW RETURNS VARY FOR DIFFERENT RATINGS?
+
+```{r cars2}
+quant_analysis<-function(x){
+  c(mean(x), min(x), quantile(x, 0.25), median(x), quantile(x, 0.75), max(x))
+}
+
+#returns
+
+stats <- summaryBy(returns ~ ESG.SCORE.Value, data = Dataset2,FUN = quant_analysis)
+colnames(stats)<-c('ESG.SCORE.Value','Mean','Min', '25%Quantile','Median','75%Quantile','Max')
+knitr::kable(stats, caption = 'Returns statistics by different ESG SCORE')
+plot1 <- ggplot(Dataset2,aes(x=ESG.SCORE.Value,y=returns))+geom_boxplot()+
+  ylim(-1, 1)
+
+stats <- summaryBy(returns ~ ESG.COMBINED.SCORE.Value, data = Dataset2,FUN = quant_analysis)
+colnames(stats)<-c('ESG.COMBINED.SCORE.Value','Mean','Min', '25%Quantile','Median','75%Quantile','Max')
+knitr::kable(stats, caption = 'Returns statistics by different ESG COMBINED SCORE')
+plot2 <- ggplot(Dataset2,aes(x=ESG.COMBINED.SCORE.Value,y=returns))+geom_boxplot()+
+  ylim(-1, 1)
+
+stats <- summaryBy(returns ~ ESG.CONTROVERSIES.SCORE.Value, data = Dataset2,FUN = quant_analysis)
+colnames(stats)<-c('ESG.CONTROVERSIES.SCORE.Value','Mean','Min', '25%Quantile','Median','75%Quantile','Max')
+knitr::kable(stats, caption = 'Returns statistics by different ESG CONTROVERSIES SCORE')
+plot3 <- ggplot(Dataset2,aes(x=ESG.CONTROVERSIES.SCORE.Value,y=returns))+geom_boxplot()+
+  ylim(-1, 1)
+
+stats <- summaryBy(returns ~ ENVIRONMENT.PILLAR.SCORE.Value, data = Dataset2,FUN = quant_analysis)
+colnames(stats)<-c('ENVIRONMENT.PILLAR.SCORE.Value','Mean','Min', '25%Quantile','Median','75%Quantile','Max')
+knitr::kable(stats, caption = 'Returns statistics by different ENVIRONMENTAL PILLAR SCORE')
+plot4 <- ggplot(Dataset2,aes(x=ENVIRONMENT.PILLAR.SCORE.Value,y=returns))+geom_boxplot()+
+  ylim(-1, 1)
+
+stats <-summaryBy(returns ~ GOVERNANCE.SCORE.Value, data = Dataset2,FUN = quant_analysis)
+colnames(stats)<-c('GOVERNANCE.SCORE.Value','Mean','Min', '25%Quantile','Median','75%Quantile','Max')
+knitr::kable(stats, caption = 'Returns statistics by different GOVERNANCE SCORE')
+plot5 <- ggplot(Dataset2,aes(x=GOVERNANCE.SCORE.Value,y=returns))+geom_boxplot()+
+  ylim(-1, 1)
+
+stats <-summaryBy(returns ~ SOCIAL.SCORE.Value, data = Dataset2,FUN = quant_analysis)
+colnames(stats)<-c('SOCIAL.SCORE.Value','Mean','Min', '25%Quantile','Median','75%Quantile','Max')
+knitr::kable(stats, caption = 'Returns statistics by different SOCIAL SCORE')
+plot6 <- ggplot(Dataset2,aes(x=SOCIAL.SCORE.Value,y=returns))+geom_boxplot()+
+  ylim(-1, 1)
+
+ggsave("1.png", plot_grid(plot1, plot2, plot3, plot4, plot5, plot6, ncol = 2),width = 20, height = 16)
+
+knitr::include_graphics("1.png")
+```
+
+The displayed box plots provide a visualization of financial returns distribution across various ESG score categories: overall ESG, controversies, combined, environmental, governance, and social scores. Each plot categorizes companies based on their ESG rating, ranging from 'A+' to 'D-', and showcases the median, quartiles, and potential outliers in returns. Notably, the plots reveal that companies with both very high and very low ESG scores tend to have a wider dispersion of returns, hinting at a complex, non-linear relationship between ESG performance and financial returns. This analysis serves as a foundational step in understanding how ESG factors may correlate with financial outcomes in the context of S&P 500 companies.
+\newpage
+
+```{r cars3}
+plot1 <- ggplot(Dataset2,aes(x=returns, colour=ESG.SCORE.Value))+
+  geom_density()
+plot2 <- ggplot(Dataset2,aes(x=returns, colour=ESG.COMBINED.SCORE.Value))+
+  geom_density()
+plot3 <- ggplot(Dataset2,aes(x=returns, colour=ESG.CONTROVERSIES.SCORE.Value))+
+  geom_density()
+plot4 <- ggplot(Dataset2,aes(x=returns, colour=ENVIRONMENT.PILLAR.SCORE.Value))+
+  geom_density()
+plot5 <- ggplot(Dataset2,aes(x=returns, colour=GOVERNANCE.SCORE.Value))+
+  geom_density()
+plot6 <- ggplot(Dataset2,aes(x=returns, colour=SOCIAL.SCORE.Value))+
+  geom_density()
+
+cat("\n\n")
+ggsave("2.png", plot_grid(plot1, plot2, plot3, plot4, plot5, plot6, ncol = 2),width = 20, height = 16)
+
+knitr::include_graphics("2.png")
+
+
+```
+This collection of density plots illustrates the distribution of financial returns for S&P 500 companies, segmented by their respective ratings in various ESG categories: overall score, controversies, combined, environmental, governance, and social. Each color-coded line represents a different ESG rating, from 'A+' to 'D-'. The plots highlight the probability density of returns within each ESG category, offering insights into the frequency and variability of returns associated with each ESG grade. These density distributions are critical for understanding the prevalence and likelihood of financial returns at different levels of ESG performance, showcasing subtle differences in the financial implications of each ESG aspect.
+
+
+\newpage
+# HOW ROE VARY FOR DIFFERENT RATINGS?
+
+```{r cars4}
+stats <- summaryBy(ROE ~ ESG.SCORE.Value, data = Dataset2,FUN = quant_analysis)
+colnames(stats)<-c('ESG.SCORE.Value','Mean','Min', '25%Quantile','Median','75%Quantile','Max')
+knitr::kable(stats, caption = 'ROE statistics by different ESG SCORE')
+plot1 <- ggplot(Dataset2,aes(x=ESG.SCORE.Value,y=ROE))+geom_boxplot()+
+  ylim(-50, 100)
+
+stats <- summaryBy(ROE ~ ESG.COMBINED.SCORE.Value, data = Dataset2,FUN = quant_analysis)
+colnames(stats)<-c('ESG.COMBINED.SCORE.Value','Mean','Min', '25%Quantile','Median','75%Quantile','Max')
+knitr::kable(stats, caption = 'ROE statistics by different ESG COMBINED SCORE')
+plot2 <- ggplot(Dataset2,aes(x=ESG.COMBINED.SCORE.Value,y=ROE))+geom_boxplot()+
+  ylim(-100, 400)
+
+stats <- summaryBy(ROE ~ ESG.CONTROVERSIES.SCORE.Value, data = Dataset2,FUN = quant_analysis)
+colnames(stats)<-c('ESG.CONTROVERSIES.SCORE.Value','Mean','Min', '25%Quantile','Median','75%Quantile','Max')
+knitr::kable(stats, caption = 'ROE statistics by different ESG CONTROVERSIES SCORE')
+plot3 <- ggplot(Dataset2,aes(x=ESG.CONTROVERSIES.SCORE.Value,y=ROE))+geom_boxplot()+
+  ylim(-50, 100)
+
+stats <- summaryBy(ROE ~ ENVIRONMENT.PILLAR.SCORE.Value, data = Dataset2,FUN = quant_analysis)
+colnames(stats)<-c('ENVIRONMENT.PILLAR.SCORE.Value','Mean','Min', '25%Quantile','Median','75%Quantile','Max')
+knitr::kable(stats, caption = 'ROE statistics by different ENVIRONMENT PILLAR SCORE')
+plot4 <- ggplot(Dataset2,aes(x=ENVIRONMENT.PILLAR.SCORE.Value,y=ROE))+geom_boxplot()+
+  ylim(-50, 100)
+
+stats <-summaryBy(ROE ~ GOVERNANCE.SCORE.Value, data = Dataset2,FUN = quant_analysis)
+colnames(stats)<-c('GOVERNANCE.SCORE.Value','Mean','Min', '25%Quantile','Median','75%Quantile','Max')
+knitr::kable(stats, caption = 'ROE statistics by different GOVERNANCE SCORE')
+plot5 <- ggplot(Dataset2,aes(x=GOVERNANCE.SCORE.Value,y=ROE))+geom_boxplot()+
+  ylim(-50, 100)
+
+stats <-summaryBy(ROE ~ SOCIAL.SCORE.Value, data = Dataset2,FUN = quant_analysis)
+colnames(stats)<-c('SOCIAL.SCORE.Value','Mean','Min', '25%Quantile','Median','75%Quantile','Max')
+knitr::kable(stats, caption = 'ROE statistics by different SOCIAL SCORE')
+plot6 <- ggplot(Dataset2,aes(x=SOCIAL.SCORE.Value,y=ROE))+geom_boxplot()+
+  ylim(-50, 100)
+
+ggsave("3.png", plot_grid(plot1, plot2, plot3, plot4, plot5, plot6, ncol = 2),width = 20, height = 16)
+
+knitr::include_graphics("3.png")
+```
+
+The provided box plots graphically summarize the distribution of Return on Equity (ROE) for S&P 500 companies classified by their ESG score ratings, which span from 'A+' to 'D-'. These visual representations allow for the comparison of median values, the spread, and the range (including potential outliers) of ROE within each ESG category. It's observable that while some categories, like the ESG Combined Score, show extreme values, others maintain a tighter interquartile range, indicating less variability in ROE performance. This analysis assists in discerning the potential influence of ESG ratings on the financial efficiency of companies as measured by their equity returns.
+
+```{r cars5}
+plot1 <- ggplot(Dataset2,aes(x=ROE, colour=ESG.SCORE.Value))+
+  geom_density()
+plot2 <- ggplot(Dataset2,aes(x=ROE, colour=ESG.COMBINED.SCORE.Value))+
+  geom_density()
+plot3 <- ggplot(Dataset2,aes(x=ROE, colour=ESG.CONTROVERSIES.SCORE.Value))+
+  geom_density()
+plot4 <- ggplot(Dataset2,aes(x=ROE, colour=ENVIRONMENT.PILLAR.SCORE.Value))+
+  geom_density()
+plot5 <- ggplot(Dataset2,aes(x=ROE, colour=GOVERNANCE.SCORE.Value))+
+  geom_density()
+plot6 <- ggplot(Dataset2,aes(x=ROE, colour=SOCIAL.SCORE.Value))+
+  geom_density()
+
+ggsave("4.png", plot_grid(plot1, plot2, plot3, plot4, plot5, plot6, ncol = 2),width = 20, height = 16)
+
+knitr::include_graphics("4.png")
+```
+
+The set of density plots illustrates the distribution of Return on Equity (ROE) among S&P 500 companies, categorized by their respective ESG scores from 'A+' to 'D-'. Each plot corresponds to a different aspect of ESG — overall score, controversies, combined score, environmental, governance, and social. The density curves represent the probability of ROE values within each ESG rating class, showcasing the concentration and spread of equity returns. Notably, the plots reveal a sharp peak close to zero, indicating a high frequency of companies with low ROE across all ESG ratings. The long tails suggest that while high ROE values are less common, they occur across the spectrum of ESG ratings, indicating that exceptional financial performance is not confined to any single ESG category. These plots offer a nuanced view of the relationship between ESG performance and financial efficiency, as expressed through equity returns.
+
+
+\newpage
+# HOW ROA VARY FOR DIFFERENT RATINGS?
+```{r cars6}
+stats <- summaryBy(ROA ~ ESG.SCORE.Value, data = Dataset2,FUN = quant_analysis)
+colnames(stats)<-c('ESG.SCORE.Value','Mean','Min', '25%Quantile','Median','75%Quantile','Max')
+knitr::kable(stats, caption = 'ROA statistics by different ESG SCORE')
+plot1 <- ggplot(Dataset2,aes(x=ESG.SCORE.Value,y=ROA))+geom_boxplot()
+
+stats <- summaryBy(ROA ~ ESG.COMBINED.SCORE.Value, data = Dataset2,FUN = quant_analysis)
+colnames(stats)<-c('ESG.COMBINED.SCORE.Value','Mean','Min', '25%Quantile','Median','75%Quantile','Max')
+knitr::kable(stats, caption = 'ROA statistics by different ESG COMBINED SCORE')
+plot2 <- ggplot(Dataset2,aes(x=ESG.COMBINED.SCORE.Value,y=ROA))+geom_boxplot()
+
+stats <- summaryBy(ROA ~ ESG.CONTROVERSIES.SCORE.Value, data = Dataset2,FUN = quant_analysis)
+colnames(stats)<-c('ESG.CONTROVERSIES.SCORE.Value','Mean','Min', '25%Quantile','Median','75%Quantile','Max')
+knitr::kable(stats, caption = 'ROA statistics by different ESG CONTROVERSIES SCORE')
+plot3 <- ggplot(Dataset2,aes(x=ESG.CONTROVERSIES.SCORE.Value,y=ROA))+geom_boxplot()
+
+stats <- summaryBy(ROA ~ ENVIRONMENT.PILLAR.SCORE.Value, data = Dataset2,FUN = quant_analysis)
+colnames(stats)<-c('ENVIRONMENT.PILLAR.SCORE.Value','Mean','Min', '25%Quantile','Median','75%Quantile','Max')
+knitr::kable(stats, caption = 'ROA statistics by different ENVIRONMENT PILLAR SCORE')
+plot4 <- ggplot(Dataset2,aes(x=ENVIRONMENT.PILLAR.SCORE.Value,y=ROA))+geom_boxplot()
+
+stats <-summaryBy(ROA ~ GOVERNANCE.SCORE.Value, data = Dataset2,FUN = quant_analysis)
+colnames(stats)<-c('GOVERNANCE.SCORE.Value','Mean','Min', '25%Quantile','Median','75%Quantile','Max')
+knitr::kable(stats, caption = 'ROA statistics by different GOVERNANCE SCORE')
+plot5 <- ggplot(Dataset2,aes(x=GOVERNANCE.SCORE.Value,y=ROA))+geom_boxplot()
+
+stats <-summaryBy(ROA ~ SOCIAL.SCORE.Value, data = Dataset2,FUN = quant_analysis)
+colnames(stats)<-c('SOCIAL.SCORE.Value','Mean','Min', '25%Quantile','Median','75%Quantile','Max')
+knitr::kable(stats, caption = 'ROA statistics by different SOCIAL SCORE')
+plot6 <- ggplot(Dataset2,aes(x=SOCIAL.SCORE.Value,y=ROA))+geom_boxplot()
+
+ggsave("5.png", plot_grid(plot1, plot2, plot3, plot4, plot5, plot6, ncol = 2),width = 20, height = 16)
+
+knitr::include_graphics("5.png")
+```
+
+These box plots compare the Return on Assets (ROA) against different categories of ESG scores, ranging from 'A+' to 'D-', for companies in the S&P 500 index. The plots illustrate the central tendency and dispersion of ROA for each ESG category, revealing any potential outliers in the data. It is evident that the median ROA does not vary significantly across ESG scores, suggesting a more subtle or possibly indirect influence of ESG performance on asset returns. Additionally, the relatively consistent spread across categories implies that the ESG rating, while important, is just one of many factors that could influence the ROA.
+\newpage
+```{r cars7}
+plot1 <- ggplot(Dataset2,aes(x=ROA, colour=ESG.SCORE.Value))+
+  geom_density()
+plot2 <- ggplot(Dataset2,aes(x=ROA, colour=ESG.COMBINED.SCORE.Value))+
+  geom_density()
+plot3 <- ggplot(Dataset2,aes(x=ROA, colour=ESG.CONTROVERSIES.SCORE.Value))+
+  geom_density()
+plot4 <- ggplot(Dataset2,aes(x=ROA, colour=ENVIRONMENT.PILLAR.SCORE.Value))+
+  geom_density()
+plot5 <- ggplot(Dataset2,aes(x=ROA, colour=GOVERNANCE.SCORE.Value))+
+  geom_density()
+plot6 <- ggplot(Dataset2,aes(x=ROA, colour=SOCIAL.SCORE.Value))+
+  geom_density()
+
+ggsave("6.png", plot_grid(plot1, plot2, plot3, plot4, plot5, plot6, ncol = 2),width = 20, height = 16)
+
+knitr::include_graphics("6.png")
+```
+
+This set of density plots portrays the distribution of Return on Assets (ROA) for S&P 500 firms according to different ESG score categories: overall, controversies, combined, environmental, governance, and social scores. Each curve within the plots represents a different ESG rating, color-coded from 'A+' to 'D-'. The plots elucidate the distribution density and variability of ROA values associated with each ESG rating, offering a probabilistic view of asset return performance. A notable feature is the peak concentration around lower ROA values across all categories, suggesting a common central tendency. However, variations in the tail lengths and heights across different ratings indicate varying levels of ROA extremes and distribution shapes, reflecting the diverse impact of each ESG factor on asset profitability.
+
+\newpage
+```{r cars8}
+###Categorical data
+
+Dataset2_2002<-Dataset2[Dataset2$Year==2002,]
+rownames(Dataset2_2002)<-Dataset2_2002[,2]
+Dataset2_2002<-Dataset2_2002[,3:8]
+
+Dataset2_2003<-Dataset2[Dataset2$Year==2003,]
+rownames(Dataset2_2003)<-Dataset2_2003[,2]
+Dataset2_2003<-Dataset2_2003[,3:8]
+
+Dataset2_2004<-Dataset2[Dataset2$Year==2004,]
+rownames(Dataset2_2004)<-Dataset2_2004[,2]
+Dataset2_2004<-Dataset2_2004[,3:8]
+
+Dataset2_2005<-Dataset2[Dataset2$Year==2005,]
+rownames(Dataset2_2005)<-Dataset2_2005[,2]
+Dataset2_2005<-Dataset2_2005[,3:8]
+
+Dataset2_2006<-Dataset2[Dataset2$Year==2006,]
+rownames(Dataset2_2006)<-Dataset2_2006[,2]
+Dataset2_2006<-Dataset2_2006[,3:8]
+
+Dataset2_2007<-Dataset2[Dataset2$Year==2007,]
+rownames(Dataset2_2007)<-Dataset2_2007[,2]
+Dataset2_2007<-Dataset2_2007[,3:8]
+
+Dataset2_2008<-Dataset2[Dataset2$Year==2008,]
+rownames(Dataset2_2008)<-Dataset2_2008[,2]
+Dataset2_2008<-Dataset2_2008[,3:8]
+
+Dataset2_2009<-Dataset2[Dataset2$Year==2009,]
+rownames(Dataset2_2009)<-Dataset2_2009[,2]
+Dataset2_2009<-Dataset2_2009[,3:8]
+
+Dataset2_2010<-Dataset2[Dataset2$Year==2010,]
+rownames(Dataset2_2010)<-Dataset2_2010[,2]
+Dataset2_2010<-Dataset2_2010[,3:8]
+
+Dataset2_2011<-Dataset2[Dataset2$Year==2011,]
+rownames(Dataset2_2011)<-Dataset2_2011[,2]
+Dataset2_2011<-Dataset2_2011[,3:8]
+
+Dataset2_2012<-Dataset2[Dataset2$Year==2012,]
+rownames(Dataset2_2012)<-Dataset2_2012[,2]
+Dataset2_2012<-Dataset2_2012[,3:8]
+
+Dataset2_2013<-Dataset2[Dataset2$Year==2013,]
+rownames(Dataset2_2013)<-Dataset2_2013[,2]
+Dataset2_2013<-Dataset2_2013[,3:8]
+
+Dataset2_2014<-Dataset2[Dataset2$Year==2014,]
+rownames(Dataset2_2014)<-Dataset2_2014[,2]
+Dataset2_2014<-Dataset2_2014[,3:8]
+
+Dataset2_2015<-Dataset2[Dataset2$Year==2015,]
+rownames(Dataset2_2015)<-Dataset2_2015[,2]
+Dataset2_2015<-Dataset2_2015[,3:8]
+
+Dataset2_2016<-Dataset2[Dataset2$Year==2016,]
+rownames(Dataset2_2016)<-Dataset2_2016[,2]
+Dataset2_2016<-Dataset2_2016[,3:8]
+
+Dataset2_2017<-Dataset2[Dataset2$Year==2017,]
+rownames(Dataset2_2017)<-Dataset2_2017[,2]
+Dataset2_2017<-Dataset2_2017[,3:8]
+
+Dataset2_2018<-Dataset2[Dataset2$Year==2018,]
+rownames(Dataset2_2018)<-Dataset2_2018[,2]
+Dataset2_2018<-Dataset2_2018[,3:8]
+
+Dataset2_2019<-Dataset2[Dataset2$Year==2019,]
+rownames(Dataset2_2019)<-Dataset2_2019[,2]
+Dataset2_2019<-Dataset2_2019[,3:8]
+
+Dataset2_2020<-Dataset2[Dataset2$Year==2020,]
+rownames(Dataset2_2020)<-Dataset2_2020[,2]
+Dataset2_2020<-Dataset2_2020[,3:8]
+
+Dataset2_2021<-Dataset2[Dataset2$Year==2021,]
+rownames(Dataset2_2021)<-Dataset2_2021[,2]
+Dataset2_2021<-Dataset2_2021[,3:8]
+
+Dataset2_2022<-Dataset2[Dataset2$Year==2022,]
+rownames(Dataset2_2022)<-Dataset2_2022[,2]
+Dataset2_2022<-Dataset2_2022[,3:8]
+```
+
+
+# HOW DIFFERENT ESG SCORES CHANGED OVER TIME?
+```{r cars9}
+####NUMERICAL
+
+plot1 <- ggplot(Dataset2,aes(x=Year, fill=ESG.SCORE.Value))+
+  geom_histogram(bins = 30)
+
+plot2 <- ggplot(Dataset2,aes(x=Year, fill=ESG.COMBINED.SCORE.Value))+
+  geom_histogram(bins = 30)
+
+plot3 <- ggplot(Dataset2,aes(x=Year, fill=ESG.CONTROVERSIES.SCORE.Value))+
+  geom_histogram(bins = 30)
+
+plot4 <- ggplot(Dataset2,aes(x=Year, fill=ENVIRONMENT.PILLAR.SCORE.Value))+
+  geom_histogram(bins = 30)
+
+plot5 <- ggplot(Dataset2,aes(x=Year, fill=GOVERNANCE.SCORE.Value))+
+  geom_histogram(bins = 30)
+
+plot6 <- ggplot(Dataset2,aes(x=Year, fill=SOCIAL.SCORE.Value))+
+  geom_histogram(bins = 30)
+
+ggsave("7.png", plot_grid(plot1, plot2, plot3, plot4, plot5, plot6, ncol = 2),width = 20, height = 16)
+
+knitr::include_graphics("7.png")
+```
+
+The stacked bar charts illustrate the distribution of ESG score categories over time, from 2002 to 2022, for companies within the S&P 500 index. Each colored segment of the bars corresponds to a specific ESG score, from 'A+' to 'D-', depicting the count of companies within each rating per year. These charts offer a visual timeline of the ESG score evolution, reflecting shifts in corporate sustainability and governance practices. The consistent layering across years suggests a stable distribution of ESG scores, while any changes in the thickness of the layers indicate shifts in the prevalence of certain ESG ratings over time. This visualization aids in understanding the dynamic landscape of corporate ESG performance in relation to evolving global sustainability trends.
+
+\newpage
+```{r cars10}
+# ESG_SCORE Over the time period
+abt_data_2002 <- Dataset[Dataset$Year == 2002, ]
+M_1 <- mean(abt_data_2002$ESG.SCORE.Score)
+
+abt_data_2003 <- Dataset[Dataset$Year == 2003, ]
+M_2 <- mean(abt_data_2003$ESG.SCORE.Score)
+
+abt_data_2004 <- Dataset[Dataset$Year == 2004, ]
+M_3 <-mean(abt_data_2004$ESG.SCORE.Score)
+
+abt_data_2005 <- Dataset[Dataset$Year == 2005, ]
+M_4 <- mean(abt_data_2005$ESG.SCORE.Score)
+
+abt_data_2006 <- Dataset[Dataset$Year == 2006, ]
+M_5 <- mean(abt_data_2006$ESG.SCORE.Score)
+
+abt_data_2007 <- Dataset[Dataset$Year == 2007, ]
+M_6 <- mean(abt_data_2007$ESG.SCORE.Score)
+
+abt_data_2008 <- Dataset[Dataset$Year == 2008, ]
+M_7 <- mean(abt_data_2008$ESG.SCORE.Score)
+
+abt_data_2009 <- Dataset[Dataset$Year == 2009, ]
+M_8 <- mean(abt_data_2009$ESG.SCORE.Score)
+
+abt_data_2010 <- Dataset[Dataset$Year == 2010, ]
+M_9 <- mean(abt_data_2010$ESG.SCORE.Score)
+
+abt_data_2011 <- Dataset[Dataset$Year == 2011, ]
+M_10 <- mean(abt_data_2011$ESG.SCORE.Score)
+
+abt_data_2012 <- Dataset[Dataset$Year == 2012, ]
+M_11 <- mean(abt_data_2012$ESG.SCORE.Score)
+
+abt_data_2013 <- Dataset[Dataset$Year == 2013, ]
+M_12 <- mean(abt_data_2013$ESG.SCORE.Score)
+
+abt_data_2014 <- Dataset[Dataset$Year == 2014, ]
+M_13 <- mean(abt_data_2014$ESG.SCORE.Score)
+
+abt_data_2015 <- Dataset[Dataset$Year == 2015, ]
+M_14 <- mean(abt_data_2015$ESG.SCORE.Score)
+
+abt_data_2016 <- Dataset[Dataset$Year == 2016, ]
+M_15 <- mean(abt_data_2016$ESG.SCORE.Score)
+
+abt_data_2017 <- Dataset[Dataset$Year == 2017, ]
+M_16 <- mean(abt_data_2017$ESG.SCORE.Score)
+
+abt_data_2018 <- Dataset[Dataset$Year == 2018, ]
+M_17 <- mean(abt_data_2018$ESG.SCORE.Score)
+
+abt_data_2019 <- Dataset[Dataset$Year == 2019, ]
+M_18 <- mean(abt_data_2019$ESG.SCORE.Score)
+
+abt_data_2020 <- Dataset[Dataset$Year == 2020, ]
+M_19 <- mean(abt_data_2020$ESG.SCORE.Score)
+
+abt_data_2021 <- Dataset[Dataset$Year == 2021, ]
+M_20 <- mean(abt_data_2021$ESG.SCORE.Score)
+
+abt_data_2022 <- Dataset[Dataset$Year == 2022, ]
+M_21 <- mean(abt_data_2022$ESG.SCORE.Score)
+
+abt_mean <- c(M_1, M_2, M_3, M_4, M_5, M_6, M_7, M_8, M_9, M_10, M_11, M_12, M_13, M_14, M_15, M_16, M_17, M_18, M_19, M_20, M_21)
+abt_year <- seq(2002, 2022, 1)
+abt <- cbind(abt_mean, abt_year)
+abt <- as.data.frame(abt)
+
+plot1 <- ggplot(abt, aes(x = abt$abt_year, y = abt$abt_mean, color = "red")) + 
+  geom_line(size = 1.5) +
+  labs(title = "ESG Score Mean over time",
+       x = "Year",
+       y = "ESG Score Mean")
+
+
+# ESG_COMBINED_SCORE Over the time period
+ab_data_2002 <- Dataset[Dataset$Year == 2002, ]
+N_1 <- mean(ab_data_2002$SOCIAL.SCORE.Score)
+
+ab_data_2003 <- Dataset[Dataset$Year == 2003, ]
+N_2 <- mean(ab_data_2003$SOCIAL.SCORE.Score)
+
+ab_data_2004 <- Dataset[Dataset$Year == 2004, ]
+N_3 <-mean(ab_data_2004$SOCIAL.SCORE.Score)
+
+ab_data_2005 <- Dataset[Dataset$Year == 2005, ]
+N_4 <- mean(ab_data_2005$SOCIAL.SCORE.Score)
+
+ab_data_2006 <- Dataset[Dataset$Year == 2006, ]
+N_5 <- mean(ab_data_2006$SOCIAL.SCORE.Score)
+
+ab_data_2007 <- Dataset[Dataset$Year == 2007, ]
+N_6 <- mean(ab_data_2007$SOCIAL.SCORE.Score)
+
+ab_data_2008 <- Dataset[Dataset$Year == 2008, ]
+N_7 <- mean(ab_data_2008$SOCIAL.SCORE.Score)
+
+ab_data_2009 <- Dataset[Dataset$Year == 2009, ]
+N_8 <- mean(ab_data_2009$SOCIAL.SCORE.Score)
+
+ab_data_2010 <- Dataset[Dataset$Year == 2010, ]
+N_9 <- mean(ab_data_2010$SOCIAL.SCORE.Score)
+
+ab_data_2011 <- Dataset[Dataset$Year == 2011, ]
+N_10 <- mean(ab_data_2011$SOCIAL.SCORE.Score)
+
+ab_data_2012 <- Dataset[Dataset$Year == 2012, ]
+N_11 <- mean(ab_data_2012$SOCIAL.SCORE.Score)
+
+ab_data_2013 <- Dataset[Dataset$Year == 2013, ]
+N_12 <- mean(ab_data_2013$SOCIAL.SCORE.Score)
+
+ab_data_2014 <- Dataset[Dataset$Year == 2014, ]
+N_13 <- mean(ab_data_2014$SOCIAL.SCORE.Score)
+
+ab_data_2015 <- Dataset[Dataset$Year == 2015, ]
+N_14 <- mean(ab_data_2015$SOCIAL.SCORE.Score)
+
+ab_data_2016 <- Dataset[Dataset$Year == 2016, ]
+N_15 <- mean(ab_data_2016$SOCIAL.SCORE.Score)
+
+ab_data_2017 <- Dataset[Dataset$Year == 2017, ]
+N_16 <- mean(ab_data_2017$SOCIAL.SCORE.Score)
+
+ab_data_2018 <- Dataset[Dataset$Year == 2018, ]
+N_17 <- mean(ab_data_2018$SOCIAL.SCORE.Score)
+
+ab_data_2019 <- Dataset[Dataset$Year == 2019, ]
+N_18 <- mean(ab_data_2019$SOCIAL.SCORE.Score)
+
+ab_data_2020 <- Dataset[Dataset$Year == 2020, ]
+N_19 <- mean(ab_data_2020$SOCIAL.SCORE.Score)
+
+ab_data_2021 <- Dataset[Dataset$Year == 2021, ]
+N_20 <- mean(ab_data_2021$SOCIAL.SCORE.Score)
+
+ab_data_2022 <- Dataset[Dataset$Year == 2022, ]
+N_21 <- mean(ab_data_2022$SOCIAL.SCORE.Score)
+
+ab_mean <- c(N_1, N_2, N_3, N_4, N_5, N_6, N_7, N_8, N_9, N_10, N_11, N_12, N_13, N_14, N_15, N_16, N_17, N_18, N_19, N_20, N_21)
+ab_year <- seq(2002, 2022, 1)
+ab <- cbind(ab_mean, ab_year)
+ab <- as.data.frame(ab)
+
+plot2 <- ggplot(ab, aes(x = ab$ab_year, y = ab$ab_mean, color = "red")) +
+  geom_line(size = 1.5) +
+  labs(title = "Social Score Mean Over time ",
+       x = "Year",
+       y = "Social Score Mean")
+
+
+# ESG_Controversies_SCORE Over the time period
+a_data_2002 <- Dataset[Dataset$Year == 2002, ]
+S_1 <- mean(a_data_2002$ESG.CONTROVERSIES.SCORE.Score)
+
+a_data_2003 <- Dataset[Dataset$Year == 2003, ]
+S_2 <- mean(a_data_2003$ESG.CONTROVERSIES.SCORE.Score)
+
+a_data_2004 <- Dataset[Dataset$Year == 2004, ]
+S_3 <-mean(a_data_2004$ESG.CONTROVERSIES.SCORE.Score)
+
+a_data_2005 <- Dataset[Dataset$Year == 2005, ]
+S_4 <- mean(a_data_2005$ESG.CONTROVERSIES.SCORE.Score)
+
+a_data_2006 <- Dataset[Dataset$Year == 2006, ]
+S_5 <- mean(a_data_2006$ESG.CONTROVERSIES.SCORE.Score)
+
+a_data_2007 <- Dataset[Dataset$Year == 2007, ]
+S_6 <- mean(a_data_2007$ESG.CONTROVERSIES.SCORE.Score)
+
+a_data_2008 <- Dataset[Dataset$Year == 2008, ]
+S_7 <- mean(a_data_2008$ESG.CONTROVERSIES.SCORE.Score)
+
+a_data_2009 <- Dataset[Dataset$Year == 2009, ]
+S_8 <- mean(a_data_2009$ESG.CONTROVERSIES.SCORE.Score)
+
+a_data_2010 <- Dataset[Dataset$Year == 2010, ]
+S_9 <- mean(a_data_2010$ESG.CONTROVERSIES.SCORE.Score)
+
+a_data_2011 <- Dataset[Dataset$Year == 2011, ]
+S_10 <- mean(a_data_2011$ESG.CONTROVERSIES.SCORE.Score)
+
+a_data_2012 <- Dataset[Dataset$Year == 2012, ]
+S_11 <- mean(a_data_2012$ESG.CONTROVERSIES.SCORE.Score)
+
+a_data_2013 <- Dataset[Dataset$Year == 2013, ]
+S_12 <- mean(a_data_2013$ESG.CONTROVERSIES.SCORE.Score)
+
+a_data_2014 <- Dataset[Dataset$Year == 2014, ]
+S_13 <- mean(a_data_2014$ESG.CONTROVERSIES.SCORE.Score)
+
+a_data_2015 <- Dataset[Dataset$Year == 2015, ]
+S_14 <- mean(a_data_2015$ESG.CONTROVERSIES.SCORE.Score)
+
+a_data_2016 <- Dataset[Dataset$Year == 2016, ]
+S_15 <- mean(a_data_2016$ESG.CONTROVERSIES.SCORE.Score)
+
+a_data_2017 <- Dataset[Dataset$Year == 2017, ]
+S_16 <- mean(a_data_2017$ESG.CONTROVERSIES.SCORE.Score)
+
+a_data_2018 <- Dataset[Dataset$Year == 2018, ]
+S_17 <- mean(a_data_2018$ESG.CONTROVERSIES.SCORE.Score)
+
+a_data_2019 <- Dataset[Dataset$Year == 2019, ]
+S_18 <- mean(a_data_2019$ESG.CONTROVERSIES.SCORE.Score)
+
+a_data_2020 <- Dataset[Dataset$Year == 2020, ]
+S_19 <- mean(a_data_2020$ESG.CONTROVERSIES.SCORE.Score)
+
+a_data_2021 <- Dataset[Dataset$Year == 2021, ]
+S_20 <- mean(a_data_2021$ESG.CONTROVERSIES.SCORE.Score)
+
+a_data_2022 <- Dataset[Dataset$Year == 2022, ]
+S_21 <- mean(a_data_2022$ESG.CONTROVERSIES.SCORE.Score)
+
+a_mean <- c(S_1, S_2, S_3, S_4, S_5, S_6, S_7, S_8, S_9, S_10, S_11, S_12, S_13, S_14, S_15, S_16, S_17, S_18, S_19, S_20, S_21)
+a_year <- seq(2002, 2022, 1)
+a <- cbind(a_mean, a_year)
+a <- as.data.frame(a)
+
+plot3 <- ggplot(a, aes(x = a$a_year, y = a$a_mean, color = "red")) +
+  geom_line(size = 1.5) +
+  labs(title = "ESG Controversies Score Mean Over Time",
+       x = "Year",
+       y = "ESG Controversies Score Mean")
+
+# ESG_Controversies_SCORE Over the time period
+a_data_2002 <- Dataset[Dataset$Year == 2002, ]
+S_1 <- mean(a_data_2002$GOVERNANCE.SCORE.Score)
+
+a_data_2003 <- Dataset[Dataset$Year == 2003, ]
+S_2 <- mean(a_data_2003$GOVERNANCE.SCORE.Score)
+
+a_data_2004 <- Dataset[Dataset$Year == 2004, ]
+S_3 <-mean(a_data_2004$GOVERNANCE.SCORE.Score)
+
+a_data_2005 <- Dataset[Dataset$Year == 2005, ]
+S_4 <- mean(a_data_2005$GOVERNANCE.SCORE.Score)
+
+a_data_2006 <- Dataset[Dataset$Year == 2006, ]
+S_5 <- mean(a_data_2006$GOVERNANCE.SCORE.Score)
+
+a_data_2007 <- Dataset[Dataset$Year == 2007, ]
+S_6 <- mean(a_data_2007$GOVERNANCE.SCORE.Score)
+
+a_data_2008 <- Dataset[Dataset$Year == 2008, ]
+S_7 <- mean(a_data_2008$GOVERNANCE.SCORE.Score)
+
+a_data_2009 <- Dataset[Dataset$Year == 2009, ]
+S_8 <- mean(a_data_2009$GOVERNANCE.SCORE.Score)
+
+a_data_2010 <- Dataset[Dataset$Year == 2010, ]
+S_9 <- mean(a_data_2010$GOVERNANCE.SCORE.Score)
+
+a_data_2011 <- Dataset[Dataset$Year == 2011, ]
+S_10 <- mean(a_data_2011$GOVERNANCE.SCORE.Score)
+
+a_data_2012 <- Dataset[Dataset$Year == 2012, ]
+S_11 <- mean(a_data_2012$GOVERNANCE.SCORE.Score)
+
+a_data_2013 <- Dataset[Dataset$Year == 2013, ]
+S_12 <- mean(a_data_2013$GOVERNANCE.SCORE.Score)
+
+a_data_2014 <- Dataset[Dataset$Year == 2014, ]
+S_13 <- mean(a_data_2014$GOVERNANCE.SCORE.Score)
+
+a_data_2015 <- Dataset[Dataset$Year == 2015, ]
+S_14 <- mean(a_data_2015$GOVERNANCE.SCORE.Score)
+
+a_data_2016 <- Dataset[Dataset$Year == 2016, ]
+S_15 <- mean(a_data_2016$GOVERNANCE.SCORE.Score)
+
+a_data_2017 <- Dataset[Dataset$Year == 2017, ]
+S_16 <- mean(a_data_2017$GOVERNANCE.SCORE.Score)
+
+a_data_2018 <- Dataset[Dataset$Year == 2018, ]
+S_17 <- mean(a_data_2018$GOVERNANCE.SCORE.Score)
+
+a_data_2019 <- Dataset[Dataset$Year == 2019, ]
+S_18 <- mean(a_data_2019$GOVERNANCE.SCORE.Score)
+
+a_data_2020 <- Dataset[Dataset$Year == 2020, ]
+S_19 <- mean(a_data_2020$GOVERNANCE.SCORE.Score)
+
+a_data_2021 <- Dataset[Dataset$Year == 2021, ]
+S_20 <- mean(a_data_2021$GOVERNANCE.SCORE.Score)
+
+a_data_2022 <- Dataset[Dataset$Year == 2022, ]
+S_21 <- mean(a_data_2022$GOVERNANCE.SCORE.Score)
+
+a_mean <- c(S_1, S_2, S_3, S_4, S_5, S_6, S_7, S_8, S_9, S_10, S_11, S_12, S_13, S_14, S_15, S_16, S_17, S_18, S_19, S_20, S_21)
+a_year <- seq(2002, 2022, 1)
+a <- cbind(a_mean, a_year)
+a <- as.data.frame(a)
+
+plot4 <- ggplot(a, aes(x = a$a_year, y = a$a_mean, color = "red")) +
+  geom_line(size = 1.5) +
+  labs(title = "ESG Goverance Score Mean over time",
+       x = "Year",
+       y = "ESG Governance Score Mean")
+
+# ESG_Controversies_SCORE Over the time period
+a_data_2002 <- Dataset[Dataset$Year == 2002, ]
+S_1 <- mean(a_data_2002$returns)
+
+a_data_2003 <- Dataset[Dataset$Year == 2003, ]
+S_2 <- mean(a_data_2003$returns)
+
+a_data_2004 <- Dataset[Dataset$Year == 2004, ]
+S_3 <-mean(a_data_2004$returns)
+
+a_data_2005 <- Dataset[Dataset$Year == 2005, ]
+S_4 <- mean(a_data_2005$returns)
+
+a_data_2006 <- Dataset[Dataset$Year == 2006, ]
+S_5 <- mean(a_data_2006$returns)
+
+a_data_2007 <- Dataset[Dataset$Year == 2007, ]
+S_6 <- mean(a_data_2007$returns)
+
+a_data_2008 <- Dataset[Dataset$Year == 2008, ]
+S_7 <- mean(a_data_2008$returns)
+
+a_data_2009 <- Dataset[Dataset$Year == 2009, ]
+S_8 <- mean(a_data_2009$returns)
+
+a_data_2010 <- Dataset[Dataset$Year == 2010, ]
+S_9 <- mean(a_data_2010$returns)
+
+a_data_2011 <- Dataset[Dataset$Year == 2011, ]
+S_10 <- mean(a_data_2011$returns)
+
+a_data_2012 <- Dataset[Dataset$Year == 2012, ]
+S_11 <- mean(a_data_2012$returns)
+
+a_data_2013 <- Dataset[Dataset$Year == 2013, ]
+S_12 <- mean(a_data_2013$returns)
+
+a_data_2014 <- Dataset[Dataset$Year == 2014, ]
+S_13 <- mean(a_data_2014$returns)
+
+a_data_2015 <- Dataset[Dataset$Year == 2015, ]
+S_14 <- mean(a_data_2015$returns)
+
+a_data_2016 <- Dataset[Dataset$Year == 2016, ]
+S_15 <- mean(a_data_2016$returns)
+
+a_data_2017 <- Dataset[Dataset$Year == 2017, ]
+S_16 <- mean(a_data_2017$returns)
+
+a_data_2018 <- Dataset[Dataset$Year == 2018, ]
+S_17 <- mean(a_data_2018$returns)
+
+a_data_2019 <- Dataset[Dataset$Year == 2019, ]
+S_18 <- mean(a_data_2019$returns)
+
+a_data_2020 <- Dataset[Dataset$Year == 2020, ]
+S_19 <- mean(a_data_2020$returns)
+
+a_data_2021 <- Dataset[Dataset$Year == 2021, ]
+S_20 <- mean(a_data_2021$returns)
+
+a_data_2022 <- Dataset[Dataset$Year == 2022, ]
+S_21 <- mean(a_data_2022$returns)
+
+a_mean <- c(S_1, S_2, S_3, S_4, S_5, S_6, S_7, S_8, S_9, S_10, S_11, S_12, S_13, S_14, S_15, S_16, S_17, S_18, S_19, S_20, S_21)
+a_year <- seq(2002, 2022, 1)
+a <- cbind(a_mean, a_year)
+a <- as.data.frame(a)
+
+plot5 <- ggplot(a, aes(x = a$a_year, y = a$a_mean, color = "red")) +
+  geom_line(size = 1.5) +
+  labs(title = "Returns mean over time",
+       x = "Year",
+       y = "Returns Mean")
+
+ggsave("8.png", plot_grid(plot1, plot2, plot3, plot4, plot5, ncol = 2),width = 20, height = 16)
+
+knitr::include_graphics("8.png")
+
+```
+
+The line graphs display the progression of mean ESG scores and financial returns for S&P 500 companies over two decades, from 2002 to 2022. The first graph shows a general upward trend in overall ESG scores, reflecting an increased commitment to sustainability. The second and fourth graphs depict fluctuations in ESG controversies and returns, indicating variability in corporate behavior and market reactions over time. The third graph's steady incline in social scores suggests a growing focus on social responsibility. Lastly, the governance scores exhibit stability with slight fluctuations, underscoring a consistent approach to corporate governance. These trends provide a longitudinal view of how ESG considerations and financial performance metrics evolve concurrently within the corporate landscape.
+
+\newpage
+# DO ESG SCORES EXPLAIN ROA, ROE OR RETURNS? (linear regression, stepwise selection)
+
+**for each regression we show results as follows:**
+
+1. summary
+
+2. VIF (multicollinearity issues)
+
+3. mean of abs value of residuals
+
+4. plot of residuals
+
+
+For ROA regression we updated the regression 2 times in order to remove non significant variables and variables with the highest VIF
+```{r cars11}
+
+#linear regression: returns
+
+model <- lm(returns ~ .-Year-Primary.Ticker-ROA-ROE, data = Dataset)
+stepwise_model <- stepAIC(model, direction = "both", trace = FALSE) 
+summary(stepwise_model)
+vif(stepwise_model)
+mean(abs(residuals(stepwise_model)))
+plot(residuals(stepwise_model))
+
+#linear regression: ROE
+model <- lm(ROE ~ .-Year-Primary.Ticker- ROA-returns,data = Dataset)
+stepwise_model <- stepAIC(model, direction = "both", trace = FALSE)
+summary(stepwise_model)
+vif(stepwise_model)
+mean(abs(residuals(stepwise_model)))
+plot(residuals(stepwise_model))
+
+#linear regression: ROA
+model <- lm(ROA ~ .-Year-Primary.Ticker- ROE-returns,data = Dataset)
+stepwise_model <- stepAIC(model, direction = "both", trace = FALSE)
+summary(stepwise_model)
+vif(stepwise_model)
+mean(abs(residuals(stepwise_model)))
+plot(residuals(stepwise_model))
+
+updated_model <- update(stepwise_model, . ~ . - ESG.SCORE.Score-SOCIAL.SCORE.Score)
+summary(updated_model)
+vif(updated_model)
+mean(abs(residuals(stepwise_model)))
+plot(residuals(updated_model))
+
+updated_model <- update(updated_model, . ~ . - COMMUNITY.SCORE_y-GOVERNANCE.SCORE.Score-PRODUCT.RESPONSIBILITY.SCORE_y)
+summary(updated_model)
+vif(updated_model)
+mean(abs(residuals(stepwise_model)))
+plot(residuals(updated_model))
+```
+
+\newpage
+# DO ESG SCORES EXPLAIN ROA, ROE OR RETURNS? (random forest)
+
+```{R CARS 12}
+# random forest
+
+# Random Forest for predicting returns
+model_returns <- randomForest(returns ~ .-Year-Primary.Ticker-ROA-ROE, data = Dataset, importance = TRUE)
+model_returns
+importance(model_returns)
+varImpPlot(model_returns)
+
+# Random Forest for predicting ROE
+model_ROE <- randomForest(ROE ~ .-Year-Primary.Ticker-ROA-returns, data = Dataset, importance = TRUE)
+model_ROE
+importance(model_ROE)
+varImpPlot(model_ROE)
+
+# Random Forest for predicting ROA
+model_ROA <- randomForest(ROA ~ .-Year-Primary.Ticker-ROE-returns, data = Dataset, importance = TRUE)
+model_ROA
+importance(model_ROA)
+varImpPlot(model_ROA)
+```
+
+\newpage
+# CONCLUSIONS, RESULTS AND METHODS EMPLOYED
+
+Initially, the ESG scores of companies in the SEP500 index underwent scrutiny. However, the analysis revealed a lack of significant qualitative data for many companies. Consequently, after multiple data cleaning stages involving the elimination of missing values and suspicious data points, a more robust sample of 69 companies was deemed suitable for further analysis.
+
+The dataset was categorized into two distinctive segments:
+
+Variables encompassing ESG scores graded from A+ to D-.
+Numeric values representing ESG scores on a scale from 0 to 1.
+
+**Considered ESG Score Variables:**
+
+The analysis encompassed several ESG score variables, including COMMUNITY.SCORE, CSR.STRATEGY.SCORE, EMISSIONS.SCORE, ENVIRONMENT.PILLAR.SCORE, ENVIRONMENTAL.INNOVATION.SCORE, ESG.COMBINED.SCORE, ESG.CONTROVERSIES.SCORE, ESG.SCORE, GOVERNANCE.SCORE, HUMAN.RIGHTS.SCORE, MANAGEMENT.SCORE, PRODUCT.RESPONSIBILITY.SCORE, RESOURCE.USE.SCORE, SHAREHOLDERS.SCORE, SOCIAL.SCORE, and WORKFORCE.SCORE. Initially, we focused on core variables such as ESG score, ESG combined score, ESG controversies score, environmental pillar score, governance score, and social score for analysis, later integrating other variables into regression models.
+
+**Relationship with ROE and ROA:**
+
+A notable correlation is evident between changes in ESG scores over time and the returns of the 69 companies, particularly concerning Return on Equity (ROE) and Return on Assets (ROA). Higher ESG scores appear linked to greater ROE and ROA, while lower scores correlate with reduced returns.
+
+**ESG Scores Over Time:**
+
+There's an observed increase in average ESG scores over the years, notably post the 2007-2008 financial crisis. However, the Combined ESG Score doesn't show a consistent upward trend; instead, there's a decline post the COVID-19 crisis.
+Trends of Specific ESG Scores:
+While the Controversial Score diminishes over time, scores pertaining to Environmental, Social, and Governance exhibit an upward trend.
+
+
+**Returns Regression Analysis:**
+
+The stepwise regression technique was employed to assess the relationship between ESG scores (EMISSIONS.SCORE_y, ENVIRONMENT.PILLAR.SCORE.Score, ESG.COMBINED.SCORE.Score, HUMAN.RIGHTS.SCORE_y, WORKFORCE.SCORE_y) and returns. However, the resulting model displays a relatively low R-squared value of 0.008526, indicating that the included ESG scores explain only about 0.85% of the variance in returns. Despite employing stepwise selection, only the ESG.COMBINED.SCORE.Score exhibits significant impact (p-value: 0.03303).
+Low R-squared: An R-squared of 0.85% for the ESG Combined Score indicates that only 0.85% of the variance in financial returns can be explained by this specific ESG score, suggesting a weak or insignificant correlation.
+In our inference analysis, ESG scores do not directly predict returns. Therefore, we could assert that Eugene Fama's theory, stating that prices incorporate all necessary information, cannot be confirmed solely by ESG factors in our case. There are likely other influencing factors on prices and returns. It might be necessary to incorporate macroeconomic and microeconomic data (control factors) to achieve more relevant results.
+Regarding the VIF (Variance Inflation Factor), we do not have multicollinearity. Through stepwise selection, we observe that only two features are significant: ESG combined score and human rights score. Particularly, the human rights score shows a highly significant p-value, with a very small p-value from the F-test. However, the R-squared indicates a poor explanatory capacity of the model.
+
+**ROE Regression Analysis:**
+
+Using stepwise regression, the model investigating Return on Equity (ROE) shows an R-squared value of 0.02433. This implies that the ESG.COMBINED.SCORE.Score and HUMAN.RIGHTS.SCORE_y together explain approximately 2.43% of the variance in ROE. However, only the coefficient for HUMAN.RIGHTS.SCORE_y demonstrates significant impact (p-value: 3.09e-05), while ESG.COMBINED.SCORE.Score shows marginal significance (p-value: 0.0591).
+
+**ROA Regression Analysis:**
+
+Similarly employing stepwise regression, the model examining Return on Assets (ROA) shows a more substantial R-squared value of 0.1487, indicating that the included ESG scores collectively explain around 14.87% of the variance in ROA. Most ESG scores exhibit statistical significance, suggesting their substantive impact on explaining variations in ROA. This result seems to be really good for our analysis. 
+These findings highlight that other unmeasured variables or complex relationships may significantly influence financial outcomes, warranting further investigation into a broader range of factors to comprehensively understand their impact on financial performance.
+As for the regression of ROA (Return on Assets) on ESG factors, we detect high multicollinearity among the following features: ESG.SCORE.Score and SOCIAL.SCORE.Score. Given that these are the main categories, it is normal for them to be affected by multicollinearity since the dataset includes subcategories. Therefore, we eliminate these factors and also remove the non-significant factors (COMMUNITY.SCORE_y, GOVERNANCE.SCORE.Score and PRODUCT.RESPONSIBILITY.SCORE_y). We still have an RSquared equal to almost 12%. Therefore we lose a little bit of information, but the coefficients will be more stable.
+
+**Possible Considerations:**
+
+Complexity of Relationships: Relationships between ESG scores and financial returns might be intricate and nonlinear, making their identification through linear analysis challenging. 
+CONSIDERING OTHER VARIABLES: Consideration of additional variables: Evaluating the inclusion of other pertinent variables that might influence financial returns, such as macroeconomic indicators, sector-specific data, or alternative financial metrics.
+
+**Random Forest:**
+
+Through the implementation of the Random Forest as a machine learning model, we observed a significant improvement in the explained variance percentage compared to other approaches.
+The Random Forest used to predict ROE demonstrated an explained variance percentage of 14.97%, suggesting a good ability of the model to capture data patterns. This model, consisting of 500 trees, resulted in a mean squared error of 5437.287, indicating a reasonable fit of the data to the model. Analysis on variable importance revealed that factors such as combined ESG score, community score, aspects related to human rights, and CSR strategy are among the most relevant in determining ROE. These findings suggest that assessments related to corporate social responsibility, along with strategic and governance aspects, could play a crucial role in predicting equity returns.
+The Random Forest model trained to predict ROA showed an explained variance percentage of 32.63%, emphasizing the robustness of the model in interpreting data patterns. Comprising 500 trees, the model highlighted a mean squared error of 26.08658, indicating a good level of adaptation to the data. From the analysis of variable importance, factors like environmental score, environmental innovation, resource management, and workforce score stand out as some of the most influential in predicting Return on Assets. These results suggest that indicators related to environmental management, resource efficiency, and workforce involvement could significantly impact determining a company's asset profitability.
+
+\newpage
+# References
+
+Berg, F., Kölbel, J., & Rigobon, R. (2022). Aggregate Confusion:
+The Divergence of ESG Ratings. Review of Finance, Volume 26, Issue 6, 1315–1344. https://doi.org/10.1093/rof/rfac033
+
+Edmans, A. (2023). The end of ESG. Financial Management, 52, 317.  https://doi.org/10.1111/fima.12413
+
+Fama, E. F. (1970). Efficient Capital Markets: A Review of Theory and Empirical Work. The Journal of Finance, 25(2), 383–417. https://doi.org/10.2307/2325486
+
+Pedersen, L. H., Fitzgibbons, S., & Pomorski, L. (2021). Responsible Investing: The ESG-efficient Frontier. Journal of Financial Economics, 142(2), 572-597. https://doi.org/10.1016/j.jfineco.2020.11.001 
+
+Bams, D., & van der Kroft, B. (2022). "Divestment, information asymmetries, and inflated ESG ratings."
+
+Berg, F., Koelbel, J.F., Pavlova, A., Rigobon, R. (2021). "ESG Confusion and Stock Returns: Tackling the Problem of Noise," NBER Working Papers 30562, National Bureau of Economic Research, Inc.
+
+Berg, F., Kölbel, J.F., Rigobon, R. (2022). Aggregate Confusion: The Divergence of ESG Ratings. Review of Finance, 26(6), 1315–1344.
+
+Pelizzon, L., Rzeznik, A., Hanley, K. W. (July 2021). "The Salience of ESG Ratings for Stock Pricing: Evidence from (Potentially) Confused Investors." CEPR Discussion Paper No. DP16334.
+
+\newpage
+# Team Members Contribution
+
+Lorenzo Ausiello: My skills and my knowledge were applied to perform stepwise linear regression in order to assess relationship between financial performances and ESG factors. My contribution was related to discover changes of ESG scores over time as well.
+
+Fabrizio Dimino: In this work, my contribution was related to creating a strong topic, since I have a strong interest in sustainable finance. Furthermore, I applied all the skills that I learned during the course and I care more about random forest technique.
+
+Samuele Mugnai: In this work, my skills and my Knowledge were applied to conduct many steps of Exploratory Data Analysis and the build-up of the Paper and Presentation. After performing statistics analysis about the distribution of ESG scores over time, I used my time to create a insightful and clear pdf report.
+
+Sun Bo: mainly responsible for processing basic data, standardizing the report output format, and improving the report content.
+
+
+\newpage
+# APPENDIX
+
+## Summary Dataset.csv
+```{r cars13}
+summary(Dataset)
+```
+
+
+## Summary Dataset2.csv
+```{r cars14}
+summary(Dataset2)
+```
+
+## Summary Ratios.xlsx
+```{r cars134}
+summary(ROA)
+summary(ROE)
+```
