@@ -26,7 +26,7 @@ Overlap measure
 
 Inverse frequency
 
-Doodall
+Goodall
 
 Overall similarity and overall normalized similarity
 
